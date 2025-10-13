@@ -5,27 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=0.8, maximum-scale=1.0, user-scalable=yes">
     <title>CBTdvd Screensaver</title>
     <!-- Preload PNG images using actual <img> tags -->
-    <img src="/assets/cbt-background.png" style="display:none;" id="preload-bg" onload="onImageLoad('cbt-background', this.src)">
-    <img src="/assets/cbt-text.png" style="display:none;" id="preload-text" onload="onImageLoad('cbt-text', this.src)">
+    <img src="/CBTdvd/assets/cbt-background.png" style="display:none;" id="preload-bg" onload="onImageLoad('cbt-background', this.src)">
+    <img src="/CBTdvd/assets/cbt-text.png" style="display:none;" id="preload-text" onload="onImageLoad('cbt-text', this.src)">
 
-    <!-- Favicon (optional, defer if slow) -->
-    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico" onerror="this.onerror=null; this.href='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg=='">
 
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-L0T7X0BY7J"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-L0T7X0BY7J');
-    </script>
 
     <!-- Open Graph Meta Tags (defer og:image) -->
     <meta property="og:title" content="CBTdvd Screensaver - CBTstreams">
     <meta property="og:description" content="Watch the CBT logo bounce around your screen like a classic DVD screensaver.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://cbtland.github.io/CBTdvd/">
-    <meta property="og:image" content="javascript:void(0)" data-og-image="/assets/ogimage.png">
+    <meta property="og:image" content="javascript:void(0)" data-og-image="/CBTdvd/assets/ogimage.png">
 
     <style>
         body {
@@ -86,7 +76,7 @@
             position: absolute;
             width: 100%;
             height: 100%;
-            background-image: url('/assets/cbt-background.png');
+            background-image: url('/CBTdvd/cbt-background.png');
             background-size: cover;
             background-position: center;
             border-radius: 0;
@@ -156,7 +146,7 @@
     <div id="cbt-container">
         <div id="cbt-background"></div>
         <div id="cbt-overlay"></div>
-        <img id="cbt-text" src="/assets/cbt-text.png" alt="CBT">
+        <img id="cbt-text" src="/CBTdvd/cbt-text.png" alt="CBT">
     </div>
 
     <div id="corner-counter">Corner Hits: 0</div>
@@ -457,7 +447,7 @@
                 loading.style.display = 'none';
                 cbtContainer.style.visibility = 'visible';
                 const ogImage = document.querySelector('meta[property="og:image"]');
-                if (ogImage) ogImage.content = '/assets/ogimage.png';
+                if (ogImage) ogImage.content = '/CBTdvd/ogimage.png';
             }
         }
 
@@ -467,8 +457,8 @@
                 console.warn('Image load timeout, forcing visibility');
                 loading.style.display = 'none';
                 cbtContainer.style.visibility = 'visible';
-                cbtBackground.style.backgroundImage = `url(/assets/cbt-background.png)`;
-                cbtText.src = '/assets/cbt-text.png';
+                cbtBackground.style.backgroundImage = `url(/CBTdvd/cbt-background.png)`;
+                cbtText.src = '/CBTdvd/cbt-text.png';
                 cbtText.style.display = 'block';
                 imagesLoaded = 2; // Force complete
                 checkLoadComplete();
