@@ -185,13 +185,21 @@
                 const { x: savedX, y: savedY, dx: savedDx, dy: savedDy, color: savedColor, timestamp } = JSON.parse(saved);
                 const elapsedSeconds = (Date.now() - timestamp) / 1000;
 
-                if (elapsedSeconds < 20) {
-                    let newX = savedX + savedDx * elapsedSeconds * 60;
-                    let newY = savedY + savedDy * elapsedSeconds * 60;
+                // Only resume if elapsed time is under 1 hour to avoid excessive calculations
+                if (elapsedSeconds < 3600) {
+                    let newX = savedX;
+                    let newY = savedY;
                     let newDx = savedDx;
                     let newDy = savedDy;
+                    let remainingTime = elapsedSeconds;
 
-                    while (newX + cbtWidth > screenWidth || newX < 0) {
+                    // Simulate movement frame by frame to handle multiple bounces
+                    const frameTime = 1 / 60; // 60 FPS
+                    while (remainingTime > frameTime) {
+                        newX += newDx * frameTime * 60; // Move based on velocity (pixels per second)
+                        newY += newDy * frameTime * 60;
+
+                        // Handle bounces
                         if (newX + cbtWidth > screenWidth) {
                             newX = 2 * (screenWidth - cbtWidth) - newX;
                             newDx = -Math.abs(newDx);
@@ -199,8 +207,6 @@
                             newX = -newX;
                             newDx = Math.abs(newDx);
                         }
-                    }
-                    while (newY + cbtHeight > screenHeight || newY < 0) {
                         if (newY + cbtHeight > screenHeight) {
                             newY = 2 * (screenHeight - cbtHeight) - newY;
                             newDy = -Math.abs(newDy);
@@ -208,7 +214,22 @@
                             newY = -newY;
                             newDy = Math.abs(newDy);
                         }
+
+                        // Check for corner hits
+                        if (isCornerHit(newX, newY, screenWidth, screenHeight, cbtWidth, cbtHeight)) {
+                            cornerHits++;
+                        }
+
+                        remainingTime -= frameTime;
                     }
+
+                    // Final adjustment for remaining time
+                    newX += newDx * remainingTime * 60;
+                    newY += newDy * remainingTime * 60;
+
+                    // Ensure final position is within bounds
+                    newX = Math.max(0, Math.min(newX, screenWidth - cbtWidth));
+                    newY = Math.max(0, Math.min(newY, screenHeight - cbtHeight));
 
                     return {
                         x: newX,
@@ -222,6 +243,7 @@
                 }
             }
 
+            // Fallback to random initial state if no valid saved state
             return {
                 x: Math.random() * (screenWidth - cbtWidth),
                 y: Math.random() * (screenHeight - cbtHeight),
