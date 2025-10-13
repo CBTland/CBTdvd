@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=0.8, maximum-scale=1.0, user-scalable=yes">
     <title>CBTdvd Screensaver</title>
-    <!-- Preload PNG images -->
-    <link rel="preload" href="/assets/cbt-background.png" as="image">
-    <link rel="preload" href="/assets/cbt-text.png" as="image">
+    <!-- Preload PNG images using actual <img> tags -->
+    <img src="/assets/cbt-background.png" style="display:none;" id="preload-bg" onload="onImageLoad('cbt-background', this.src)">
+    <img src="/assets/cbt-text.png" style="display:none;" id="preload-text" onload="onImageLoad('cbt-text', this.src)">
 
     <!-- Favicon (optional, defer if slow) -->
     <link rel="icon" type="image/x-icon" href="/assets/favicon.ico" onerror="this.onerror=null; this.href='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg=='">
@@ -91,7 +91,7 @@
             background-position: center;
             border-radius: 0;
             z-index: 1;
-            background-color: transparent; /* Transparent fallback to avoid gray square */
+            background-color: transparent; /* Transparent fallback */
         }
 
         #cbt-overlay {
@@ -181,6 +181,7 @@
         let cornerHits = parseInt(localStorage.getItem('cornerHits') || '0', 10);
         let lastCornerTime = Date.now();
         let currentColor = '#ff0000';
+        let imagesLoaded = 0;
 
         function getRandomColor() {
             const colors = [
@@ -435,56 +436,46 @@
             }
         });
 
-        // Preload and handle image loading with timeout
-        const images = [
-            { id: 'cbt-background', src: '/assets/cbt-background.png' },
-            { id: 'cbt-text', src: '/assets/cbt-text.png' }
-        ];
-        let imagesLoaded = 0;
-
-        function preloadImages() {
-            images.forEach(({ id, src }) => {
-                const img = new Image();
-                img.src = src;
-                img.onload = () => {
-                    console.log(`Loaded ${src} successfully`);
-                    imagesLoaded++;
-                    if (id === 'cbt-background') {
-                        cbtBackground.style.backgroundImage = `url(${src})`;
-                        console.log(`Applied background: ${src}`);
-                    } else if (id === 'cbt-text') {
-                        cbtText.src = src;
-                        cbtText.style.display = 'block';
-                        console.log(`Applied text: ${src}`);
-                    }
-                    checkLoadComplete();
-                };
-                img.onerror = () => {
-                    console.error(`Failed to load ${src}, using fallback color`);
-                    imagesLoaded++; // Increment to avoid hang
-                    checkLoadComplete();
-                };
-            });
-
-            // Timeout to prevent infinite loading
-            setTimeout(() => {
-                if (imagesLoaded < images.length) {
-                    console.warn('Image load timeout, proceeding with fallback');
-                    imagesLoaded = images.length; // Force completion
-                    checkLoadComplete();
-                }
-            }, 3000); // 3-second timeout
+        // Handle image loading
+        function onImageLoad(id, src) {
+            console.log(`Image loaded: ${src}`);
+            if (id === 'cbt-background') {
+                cbtBackground.style.backgroundImage = `url(${src})`;
+                console.log(`Applied background: ${src}`);
+            } else if (id === 'cbt-text') {
+                cbtText.src = src;
+                cbtText.style.display = 'block';
+                console.log(`Applied text: ${src}`);
+            }
+            imagesLoaded++;
+            checkLoadComplete();
         }
 
         function checkLoadComplete() {
-            if (imagesLoaded === images.length) {
-                console.log('All images loaded or timed out, showing container');
+            if (imagesLoaded === 2) { // Expecting 2 images (background and text)
+                console.log('All images loaded, showing container');
                 loading.style.display = 'none';
                 cbtContainer.style.visibility = 'visible';
                 const ogImage = document.querySelector('meta[property="og:image"]');
                 if (ogImage) ogImage.content = '/assets/ogimage.png';
             }
         }
+
+        // Timeout to ensure startup
+        setTimeout(() => {
+            if (imagesLoaded < 2) {
+                console.warn('Image load timeout, forcing visibility');
+                loading.style.display = 'none';
+                cbtContainer.style.visibility = 'visible';
+                cbtBackground.style.backgroundImage = `url(/assets/cbt-background.png)`;
+                cbtText.src = '/assets/cbt-text.png';
+                cbtText.style.display = 'block';
+                imagesLoaded = 2; // Force complete
+                checkLoadComplete();
+            } else {
+                console.log('Images loaded within timeout, no action needed');
+            }
+        }, 1000); // 1-second timeout
 
         // Initialize and start
         const initialState = getInitialState();
@@ -501,22 +492,7 @@
 
         updateDisplay();
         updatePosition();
-        preloadImages();
         requestAnimationFrame(animate);
-
-        // Manual fallback if preload fails
-        setTimeout(() => {
-            if (imagesLoaded < images.length) {
-                console.log('Manual check: Forcing image application');
-                cbtBackground.style.backgroundImage = `url(/assets/cbt-background.png)`;
-                cbtText.src = '/assets/cbt-text.png';
-                cbtText.style.display = 'block';
-                imagesLoaded = images.length; // Force completion
-                checkLoadComplete();
-            } else {
-                console.log('Manual check: Preload succeeded, no action needed');
-            }
-        }, 1000); // 1-second delay to allow preload
     </script>
 </body>
 </html>
