@@ -6,6 +6,10 @@
     <title>CBTdvd Screensaver</title>
     <link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
 
+    <!-- Preload critical images -->
+    <link rel="preload" href="/assets/cbt-background.webp" as="image">
+    <link rel="preload" href="/assets/cbt-text.webp" as="image">
+
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-L0T7X0BY7J"></script>
     <script>
@@ -15,12 +19,12 @@
       gtag('config', 'G-L0T7X0BY7J');
     </script>
 
-    <!-- Open Graph Meta Tags -->
+    <!-- Open Graph Meta Tags (deferred og:image fetch) -->
     <meta property="og:title" content="CBTdvd Screensaver - CBTstreams">
     <meta property="og:description" content="Watch the CBT logo bounce around your screen like a classic DVD screensaver.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://cbtland.github.io/CBTdvd/">
-    <meta property="og:image" content="https://cbtland.github.io/CBTdvd/assets/ogimage.png">
+    <meta property="og:image" content="https://cbtland.github.io/CBTdvd/assets/ogimage.webp">
 
     <style>
         body {
@@ -40,6 +44,18 @@
             left: 0;
             max-height: 100vh;
             max-width: 100vw;
+        }
+
+        /* Loading spinner */
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 18px;
+            z-index: 20;
+            display: none;
         }
 
         /* Mobile-specific adjustments */
@@ -63,7 +79,6 @@
             }
         }
 
-        /* Very small screens */
         @media (max-width: 480px) {
             body {
                 transform: scale(0.8);
@@ -80,6 +95,7 @@
                 min-width: 140px !important;
             }
         }
+
         #cbt-container {
             position: absolute;
             width: min(240px, 25vw);
@@ -90,16 +106,18 @@
             min-width: 120px;
             min-height: 50px;
         }
+
         #cbt-background {
             position: absolute;
             width: 100%;
             height: 100%;
-            background-image: url('/assets/cbt-background.png');
+            background-image: url('/assets/cbt-background.webp');
             background-size: cover;
             background-position: center;
             border-radius: 0;
             z-index: 1;
         }
+
         #cbt-overlay {
             position: absolute;
             width: 100%;
@@ -109,6 +127,7 @@
             z-index: 2;
             opacity: 0.3;
         }
+
         #cbt-text {
             position: absolute;
             width: 100%;
@@ -116,6 +135,7 @@
             z-index: 3;
             object-fit: contain;
         }
+
         #corner-counter {
             position: fixed;
             top: 20px;
@@ -143,6 +163,7 @@
             border-radius: 5px;
             min-width: 200px;
         }
+
         .confetti {
             position: fixed;
             width: 10px;
@@ -154,10 +175,11 @@
     </style>
 </head>
 <body>
+    <div id="loading">Loading...</div>
     <div id="cbt-container">
         <div id="cbt-background"></div>
         <div id="cbt-overlay"></div>
-        <img id="cbt-text" src="/assets/cbt-text.png" alt="CBT">
+        <img id="cbt-text" src="/assets/cbt-text.webp" alt="CBT">
     </div>
 
     <div id="corner-counter">Corner Hits: 0</div>
@@ -173,10 +195,11 @@
         const confettiContainer = document.getElementById('confetti-container');
         const statsDisplay = document.getElementById('stats-display');
         const cornerCountSpan = document.getElementById('corner-count');
+        const loading = document.getElementById('loading');
 
         let statsVisible = false;
         let x, y, dx, dy;
-        let cornerHits = 0;
+        let cornerHits = parseInt(localStorage.getItem('cornerHits') || '0', 10);
         let lastCornerTime = Date.now();
         let currentColor = '#ff0000';
 
@@ -197,11 +220,11 @@
             const cbtHeight = Math.max(50, Math.min(100, screenHeight * 0.10));
 
             return {
-                x: Math.random() * (screenWidth - cbtWidth), // Random x within bounds
-                y: Math.random() * (screenHeight - cbtHeight), // Random y within bounds
-                dx: (Math.random() > 0.5 ? 1 : -1) * Math.max(2, screenWidth * 0.003), // Random direction, proportional speed
+                x: Math.random() * (screenWidth - cbtWidth),
+                y: Math.random() * (screenHeight - cbtHeight),
+                dx: (Math.random() > 0.5 ? 1 : -1) * Math.max(2, screenWidth * 0.003),
                 dy: (Math.random() > 0.5 ? 1 : -1) * Math.max(2, screenHeight * 0.003),
-                cornerHits: 0,
+                cornerHits: cornerHits,
                 lastCornerTime: Date.now(),
                 currentColor: getRandomColor()
             };
@@ -299,6 +322,7 @@
         // Handle corner hits
         function showCornerHit() {
             cornerHits++;
+            localStorage.setItem('cornerHits', cornerHits);
             cornerCounter.textContent = `Corner Hits: ${cornerHits}`;
             cornerCountSpan.textContent = cornerHits;
             console.log(`🎉 CORNER HIT #${cornerHits}! Time since last: ${(Date.now() - lastCornerTime) / 1000}s`);
@@ -458,6 +482,35 @@
             }
         });
 
+        // Preload images and start animation
+        const images = [
+            '/assets/cbt-background.webp',
+            '/assets/cbt-text.webp'
+        ];
+        let imagesLoaded = 0;
+
+        function preloadImages() {
+            images.forEach(src => {
+                const img = new Image();
+                img.src = src;
+                img.onload = () => {
+                    imagesLoaded++;
+                    if (imagesLoaded === images.length) {
+                        loading.style.display = 'none';
+                        cbtContainer.style.visibility = 'visible';
+                    }
+                };
+                img.onerror = () => {
+                    console.error(`Failed to load image: ${src}`);
+                    imagesLoaded++;
+                    if (imagesLoaded === images.length) {
+                        loading.style.display = 'none';
+                        cbtContainer.style.visibility = 'visible';
+                    }
+                };
+            });
+        }
+
         // Initialize and start
         const initialState = getInitialState();
         x = initialState.x;
@@ -473,7 +526,9 @@
 
         updateDisplay();
         updatePosition();
-        cbtContainer.style.visibility = 'visible';
+        loading.style.display = 'block';
+        cbtContainer.style.visibility = 'hidden';
+        preloadImages();
         requestAnimationFrame(animate);
     </script>
 </body>
