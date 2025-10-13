@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=0.8, maximum-scale=1.0, user-scalable=yes">
+    <title>CBTdvd Screensaver</title>
+    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-L0T7X0BY7J"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-L0T7X0BY7J');
+    </script>
+
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:image" content="https://cbtstreams.replit.app/assets/ogimage.png">
+    <meta property="og:title" content="CBTdvd Screensaver - CBTstreams">
+    <meta property="og:description" content="Watch the CBT logo bounce around your screen like a classic DVD screensaver with synchronized multiplayer action.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://cbtstreams.replit.app/CBTdvdscreen/">
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            height: 100dvh; /* Use dynamic viewport height for mobile */
+            font-family: Arial, sans-serif;
+            width: 100vw;
+            position: fixed;
+            top: 0;
+            left: 0;
+            max-height: 100vh;
+            max-width: 100vw;
+        }
+
+        /* Mobile-specific adjustments */
+        @media (max-width: 768px) {
+            body {
+                transform: scale(0.9);
+                transform-origin: center center;
+            }
+
+            #cbt-container {
+                width: min(200px, 30vw) !important; /* Slightly larger on mobile */
+                height: min(80px, 12vh) !important; /* Slightly larger on mobile */
+            }
+
+            #stats-display {
+                font-size: 14px !important;
+                top: 10px !important;
+                right: 10px !important;
+                padding: 8px !important;
+                min-width: 160px !important;
+            }
+        }
+
+        /* Very small screens */
+        @media (max-width: 480px) {
+            body {
+                transform: scale(0.8);
+            }
+
+            #cbt-container {
+                width: min(160px, 35vw) !important;
+                height: min(65px, 14vh) !important;
+            }
+
+            #stats-display {
+                font-size: 12px !important;
+                padding: 6px !important;
+                min-width: 140px !important;
+            }
+        }
+        #cbt-container {
+            position: absolute;
+            width: min(240px, 25vw); /* Responsive width: max 240px or 25% of viewport */
+            height: min(100px, 10vh); /* Responsive height: max 100px or 10% of viewport */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-width: 120px; /* Minimum size for visibility */
+            min-height: 50px;
+        }
+        #cbt-background {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: url('../assets/cbt-background.png');
+            background-size: cover;
+            background-position: center;
+            border-radius: 0;
+            z-index: 1;
+        }
+        #cbt-overlay {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-color: transparent;
+            border-radius: 0;
+            z-index: 2;
+            opacity: 0.3;
+        }
+        #cbt-text {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: 3;
+            object-fit: contain;
+        }
+        #corner-counter {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            color: #fff;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 10;
+            display: none;
+        }
+
+        #stats-display {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            color: #fff;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 10;
+            display: none;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            min-width: 200px;
+        }
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            z-index: 11;
+            pointer-events: none;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="cbt-container">
+        <div id="cbt-background"></div>
+        <div id="cbt-overlay"></div>
+        <img id="cbt-text" src="../assets/cbt-text.png" alt="CBT">
+    </div>
+
+    <div id="corner-counter">Corner Hits: 0</div>
+    <div id="stats-display">
+        <div>Corner Hits: <span id="corner-count">0</span></div>
+        <div>Page Viewers: <span id="viewer-count">0</span></div>
+    </div>
+    <div id="confetti-container"></div>
+
+    <script>
+        const cbtContainer = document.getElementById('cbt-container');
+        const cbtOverlay = document.getElementById('cbt-overlay');
+        const cornerCounter = document.getElementById('corner-counter');
+        const confettiContainer = document.getElementById('confetti-container');
+        const statsDisplay = document.getElementById('stats-display');
+        const cornerCountSpan = document.getElementById('corner-count');
+        const viewerCountSpan = document.getElementById('viewer-count');
+
+        let statsVisible = false;
+        let viewerCount = 0;
+        let connectedViewers = 0;
+
+        // Animation state - will be synced from server (don't set defaults)
+        let x = null;
+        let y = null;
+        let dx = null;
+        let dy = null;
+        let cornerHits = 0;
+        let lastCornerTime = 0;
+        let currentColor = '#ff0000';
+
+        let isMaster = false;
+        let ws = null;
+        let lastAnimationFrame = 0;
+        let stateReceived = false;
+        let sessionId = null;
+        let isReconnecting = false;
+        let heartbeatInterval = null;
+        let lastHeartbeat = Date.now();
+
+        // Generate or retrieve session ID for this viewer
+        function getSessionId() {
+            if (!sessionId) {
+                // Try to get existing session from sessionStorage first
+                sessionId = sessionStorage.getItem('dvd_session_id');
+                if (!sessionId) {
+                    // Generate new session ID if none exists
+                    sessionId = 'dvd_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                    sessionStorage.setItem('dvd_session_id', sessionId);
+                }
+            }
+            return sessionId;
+        }
+
+        // WebSocket connection
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}`;
+
+            console.log('🔌 Attempting WebSocket connection to:', wsUrl);
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = function() {
+                console.log('🔗 Connected to live DVD state server');
+                // Send session ID with initial request to maintain viewer identity
+                ws.send(JSON.stringify({ 
+                    type: 'requestState', 
+                    page: 'dvd', 
+                    priority: true,
+                    sessionId: getSessionId(),
+                    isReconnect: isReconnecting,
+                    isVisible: !document.hidden
+                }));
+                isReconnecting = false;
+
+                // Start heartbeat for masters
+                if (heartbeatInterval) clearInterval(heartbeatInterval);
+                heartbeatInterval = setInterval(() => {
+                    if (isMaster && ws && ws.readyState === WebSocket.OPEN && !document.hidden) {
+                        ws.send(JSON.stringify({
+                            type: 'masterHeartbeat',
+                            page: 'dvd',
+                            sessionId: getSessionId(),
+                            timestamp: Date.now()
+                        }));
+                    }
+                }, 2000); // Send heartbeat every 2 seconds
+            };
+
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+
+                if (data.type === 'dvdState') {
+                    // Validate incoming state before applying
+                    const screenWidth = Math.min(window.innerWidth, document.documentElement.clientWidth);
+                    const screenHeight = Math.min(window.innerHeight, document.documentElement.clientHeight);
+                    
+                    // Only update if position is valid, within screen bounds, and not too far from current position
+                    const isValidPosition = typeof data.x === 'number' && typeof data.y === 'number' && 
+                        data.x >= 0 && data.y >= 0 && 
+                        data.x < screenWidth && data.y < screenHeight &&
+                        !isNaN(data.x) && !isNaN(data.y);
+                    
+                    // Prevent large position jumps if we already have valid state
+                    const isReasonableUpdate = !stateReceived || x === null || y === null ||
+                        (Math.abs(data.x - x) < screenWidth * 0.3 && Math.abs(data.y - y) < screenHeight * 0.3);
+                    
+                    if (isValidPosition && isReasonableUpdate) {
+                        
+                        // Update local state from server
+                        x = data.x;
+                        y = data.y;
+                        dx = data.dx;
+                        dy = data.dy;
+                        cornerHits = data.cornerHits;
+                        lastCornerTime = data.lastCornerTime;
+                        currentColor = data.currentColor;
+                        connectedViewers = data.connectedViewers;
+                        stateReceived = true;
+
+                        // Clear initialization timeout since we have valid state
+                        if (connectionTimeout) {
+                            clearTimeout(connectionTimeout);
+                            connectionTimeout = null;
+                        }
+
+                        console.log('📡 Received valid DVD state:', { x, y, cornerHits, connectedViewers });
+
+                        // Handle delayed master assignment
+                        if (data.becomeMasterAfter) {
+                            isMaster = true;
+                            console.log('👑 Now becoming master with synced state');
+                            startAnimation();
+                        }
+
+                        // Update display
+                        updateDisplay();
+                        updatePosition();
+                        showContainer();
+                    } else {
+                        console.warn('⚠️ Received invalid DVD state, ignoring:', { x: data.x, y: data.y, screenWidth, screenHeight });
+                    }
+                } else if (data.type === 'becomemaster') {
+                    // Only become master if we have valid state to work with
+                    if (stateReceived && x !== null && y !== null) {
+                        isMaster = true;
+                        console.log('👑 This client is now the master animator with existing state');
+                        startAnimation();
+                    } else {
+                        // Request current state before becoming master to prevent position jumps
+                        console.log('👑 Assigned as master but requesting current state first...');
+                        ws.send(JSON.stringify({ 
+                            type: 'requestState', 
+                            page: 'dvd',
+                            sessionId: getSessionId(),
+                            becomeMasterAfter: true
+                        }));
+                    }
+                } else if (data.type === 'masterTimeout') {
+                    console.log('⚠️ Master timed out, requesting failover');
+                    // Request to become master if we're visible and active
+                    if (!document.hidden && ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({
+                            type: 'requestMaster',
+                            page: 'dvd',
+                            sessionId: getSessionId(),
+                            isVisible: true
+                        }));
+                    }
+                } else if (data.type === 'cornerHit') {
+                    // Show confetti for corner hit
+                    createConfetti();
+                } else if (data.type === 'viewerCount') {
+                    connectedViewers = data.count;
+                    viewerCount = connectedViewers;
+                    viewerCountSpan.textContent = viewerCount;
+                }
+            };
+
+            ws.onclose = function() {
+                console.log('📡 Disconnected from server, attempting to reconnect...');
+                isReconnecting = true;
+                if (heartbeatInterval) {
+                    clearInterval(heartbeatInterval);
+                    heartbeatInterval = null;
+                }
+                setTimeout(connectWebSocket, 2000);
+            };
+
+            ws.onerror = function(error) {
+                console.error('WebSocket error:', error);
+            };
+        }
+
+        function updateDisplay() {
+            cornerCountSpan.textContent = cornerHits;
+            viewerCountSpan.textContent = connectedViewers;
+            cbtOverlay.style.backgroundColor = currentColor;
+        }
+
+        function updatePosition() {
+            // Only update position if we have valid coordinates from server
+            if (x !== null && y !== null) {
+                cbtContainer.style.left = x + 'px';
+                cbtContainer.style.top = y + 'px';
+            }
+        }
+
+        // Function to generate a random color
+        function getRandomColor() {
+            const colors = [
+                '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff',
+                '#ff8000', '#8000ff', '#0080ff', '#80ff00', '#ff0080', '#8080ff'
+            ];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        function createConfetti() {
+            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ff8000', '#8000ff', '#ffffff', '#ffd700'];
+            const shapes = ['circle', 'square', 'triangle'];
+
+            for (let i = 0; i < 150; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+
+                // Random spawn position - can be from top, left, or right
+                const spawnSide = Math.random();
+                let startX, startY, endX, endY;
+
+                if (spawnSide < 0.6) {
+                    // 60% chance: Fall from top
+                    startX = Math.random() * 100;
+                    startY = -10;
+                    endX = startX + (Math.random() - 0.5) * 40; // Drift left/right
+                    endY = 110;
+                } else if (spawnSide < 0.8) {
+                    // 20% chance: Come from left side
+                    startX = -10;
+                    startY = Math.random() * 50;
+                    endX = Math.random() * 100 + 50;
+                    endY = Math.random() * 50 + 50;
+                } else {
+                    // 20% chance: Come from right side
+                    startX = 110;
+                    startY = Math.random() * 50;
+                    endX = Math.random() * 50 - 10;
+                    endY = Math.random() * 50 + 50;
+                }
+
+                confetti.style.left = startX + '%';
+                confetti.style.top = startY + '%';
+
+                // Random color
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.backgroundColor = color;
+
+                // Random shape
+                const shape = shapes[Math.floor(Math.random() * shapes.length)];
+                if (shape === 'circle') {
+                    confetti.style.borderRadius = '50%';
+                } else if (shape === 'triangle') {
+                    confetti.style.width = '0';
+                    confetti.style.height = '0';
+                    confetti.style.backgroundColor = 'transparent';
+                    confetti.style.borderLeft = '5px solid transparent';
+                    confetti.style.borderRight = '5px solid transparent';
+                    confetti.style.borderBottom = `10px solid ${color}`;
+                }
+
+                // Random size
+                const size = Math.random() * 10 + 3; // 3-13px
+                if (shape !== 'triangle') {
+                    confetti.style.width = size + 'px';
+                    confetti.style.height = size + 'px';
+                }
+
+                // Create custom animation for this piece
+                const duration = Math.random() * 2 + 2.5; // 2.5-4.5 seconds
+                const delay = Math.random() * 0.8; // 0-0.8 second delay
+                const rotation = Math.random() * 1440 + 360; // 360-1800 degrees
+
+                // Apply custom movement
+                confetti.style.transition = `all ${duration}s cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
+                confetti.style.transitionDelay = delay + 's';
+
+                confettiContainer.appendChild(confetti);
+
+                // Start movement after a tiny delay to ensure element is rendered
+                setTimeout(() => {
+                    confetti.style.left = endX + '%';
+                    confetti.style.top = endY + '%';
+                    confetti.style.transform = `rotate(${rotation}deg) scale(0.1)`;
+                    confetti.style.opacity = '0';
+                }, 50);
+
+                // Remove confetti after animation
+                setTimeout(() => {
+                    if (confetti.parentNode) {
+                        confetti.parentNode.removeChild(confetti);
+                    }
+                }, (duration + delay) * 1000 + 1000);
+            }
+        }
+
+        function showCornerHit() {
+            cornerHits++;
+            cornerCounter.textContent = `Corner Hits: ${cornerHits}`;
+            cornerCountSpan.textContent = cornerHits;
+
+            console.log(`🎉 CORNER HIT #${cornerHits}! Time since last: ${(Date.now() - lastCornerTime) / 1000}s | Live Viewers: ${connectedViewers}`);
+            lastCornerTime = Date.now();
+
+            // Notify server of corner hit (for confetti sync)
+            if (ws && isMaster) {
+                ws.send(JSON.stringify({ 
+                    type: 'cornerHit', 
+                    page: 'dvd',
+                    sessionId: getSessionId()
+                }));
+            }
+        }
+
+        function isCornerHit(newX, newY, screenWidth, screenHeight, cbtWidth, cbtHeight) {
+            const tolerance = 5; // Normal tolerance for corner detection
+
+            const leftEdge = newX <= tolerance;
+            const rightEdge = newX >= screenWidth - cbtWidth - tolerance;
+            const topEdge = newY <= tolerance;
+            const bottomEdge = newY >= screenHeight - cbtHeight - tolerance;
+
+            return (leftEdge || rightEdge) && (topEdge || bottomEdge);
+        }
+
+        function willHitCornerSoon(x, y, dx, dy, screenWidth, screenHeight, cbtWidth, cbtHeight, lookaheadSteps = 10) {
+            // Simulate future positions to predict corner hits
+            let futureX = x;
+            let futureY = y;
+            let futureDx = dx;
+            let futureDy = dy;
+
+            for (let step = 1; step <= lookaheadSteps; step++) {
+                futureX += futureDx;
+                futureY += futureDy;
+
+                // Simulate bouncing
+                if (futureX + cbtWidth >= screenWidth || futureX <= 0) {
+                    futureDx = -futureDx;
+                    futureX = futureX <= 0 ? 0 : screenWidth - cbtWidth;
+                }
+                if (futureY + cbtHeight >= screenHeight || futureY <= 0) {
+                    futureDy = -futureDy;
+                    futureY = futureY <= 0 ? 0 : screenHeight - cbtHeight;
+                }
+
+                // Check if this future position would be a corner hit
+                if (isCornerHit(futureX, futureY, screenWidth, screenHeight, cbtWidth, cbtHeight)) {
+                    return step;
+                }
+            }
+            return false;
+        }
+
+        function avoidCornerHit(dx, dy, screenWidth, screenHeight) {
+            // Slightly adjust velocity to avoid mathematical corner alignment
+            const minAdjustment = 0.1;
+            const maxAdjustment = 0.3;
+
+            // Add small random adjustment to break mathematical patterns
+            const adjustmentX = (Math.random() - 0.5) * maxAdjustment;
+            const adjustmentY = (Math.random() - 0.5) * maxAdjustment;
+
+            // Ensure we maintain minimum speed and direction
+            let newDx = dx + adjustmentX;
+            let newDy = dy + adjustmentY;
+
+            // Preserve direction and maintain reasonable speed
+            if (Math.abs(newDx) < minAdjustment) {
+                newDx = dx > 0 ? minAdjustment : -minAdjustment;
+            }
+            if (Math.abs(newDy) < minAdjustment) {
+                newDy = dy > 0 ? minAdjustment : -minAdjustment;
+            }
+
+            return { dx: newDx, dy: newDy };
+        }
+
+        let lastFrameTime = 0;
+        const targetFPS = 60;
+        const frameInterval = 1000 / targetFPS;
+
+        function animate(currentTime = 0) {
+            if (!isMaster) return; // Only master client animates
+
+            // Control frame rate to prevent acceleration
+            if (currentTime - lastFrameTime < frameInterval) {
+                requestAnimationFrame(animate);
+                return;
+            }
+            lastFrameTime = currentTime;
+
+            // Use actual viewport dimensions to ensure graphic stays within bounds
+            const screenWidth = Math.min(window.innerWidth, document.documentElement.clientWidth);
+            const screenHeight = Math.min(window.innerHeight, document.documentElement.clientHeight);
+
+            // Use responsive dimensions that match CSS
+            const cbtWidth = Math.max(120, Math.min(240, screenWidth * 0.25));
+            const cbtHeight = Math.max(50, Math.min(100, screenHeight * 0.10));
+
+            // Calculate next position with fixed velocity
+            let newX = x + dx;
+            let newY = y + dy;
+
+            // Check for wall collisions and bounce
+            let hitWall = false;
+            let hitCorner = false;
+
+            // Horizontal boundaries
+            if (newX + cbtWidth >= screenWidth) {
+                newX = screenWidth - cbtWidth;
+                dx = -Math.abs(dx); // Ensure negative direction
+                hitWall = true;
+            } else if (newX <= 0) {
+                newX = 0;
+                dx = Math.abs(dx); // Ensure positive direction
+                hitWall = true;
+            }
+
+            // Vertical boundaries
+            if (newY + cbtHeight >= screenHeight) {
+                newY = screenHeight - cbtHeight;
+                dy = -Math.abs(dy); // Ensure negative direction
+                hitWall = true;
+            } else if (newY <= 0) {
+                newY = 0;
+                dy = Math.abs(dy); // Ensure positive direction
+                hitWall = true;
+            }
+
+             // Check for imminent corner hits and adjust before they happen
+            const cornerHitStep = willHitCornerSoon(x, y, dx, dy, screenWidth, screenHeight, cbtWidth, cbtHeight, 5);
+            if (cornerHitStep) {
+                const avoidance = avoidCornerHit(dx, dy, screenWidth, screenHeight);
+                dx = avoidance.dx;
+                dy = avoidance.dy;
+                console.warn(`🤏 Avoiding predicted corner hit in ${cornerHitStep} steps! Adjusting trajectory...`);
+            }
+
+            // Check if this is a corner hit
+            if (hitWall && isCornerHit(newX, newY, screenWidth, screenHeight, cbtWidth, cbtHeight)) {
+                hitCorner = true;
+                showCornerHit();
+                createConfetti(); // Show confetti locally for master
+            }
+
+            // Update position
+            x = newX;
+            y = newY;
+
+            // Change color on any wall hit (corner or edge)
+            if (hitWall) {
+                currentColor = getRandomColor();
+                cbtOverlay.style.backgroundColor = currentColor;
+
+                // Special effect for corner hits
+                if (hitCorner) {
+                    cbtOverlay.style.opacity = '0.6';
+                    setTimeout(() => {
+                        cbtOverlay.style.opacity = '0.3';
+                                        }, 500);
+                }
+            }
+
+            // Apply new position
+            updatePosition();
+
+            // Send state to server every frame (throttled)
+            const now = Date.now();
+            if (now - lastAnimationFrame > 16) { // ~60fps throttle
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        type: 'updateState',
+                        page: 'dvd',
+                        sessionId: getSessionId(),
+                        state: {
+                            x: x,
+                            y: y,
+                            dx: dx,
+                            dy: dy,
+                            cornerHits: cornerHits,
+                            lastCornerTime: lastCornerTime,
+                            currentColor: currentColor
+                        }
+                    }));
+                }
+                lastAnimationFrame = now;
+            }
+
+            // Continue animation
+            requestAnimationFrame(animate);
+        }
+
+        function startAnimation() {
+            if (isMaster && stateReceived && x !== null && y !== null) {
+                console.log('🎮 Starting master animation loop with live state');
+                lastFrameTime = performance.now();
+                requestAnimationFrame(animate);
+            } else if (isMaster) {
+                console.log('⏳ Master assigned but waiting for valid state...');
+                // Check again in a moment
+                setTimeout(startAnimation, 100);
+            }
+        }
+
+        // Mobile zoom controls
+        let currentZoom = 1;
+
+        function adjustMobileZoom() {
+            if (window.innerWidth <= 768) {
+                // Check if content is getting cut off
+                const vh = window.innerHeight;
+                const vw = window.innerWidth;
+
+                // If screen is very small, zoom out more
+                if (vh < 600 || vw < 400) {
+                    currentZoom = 0.7;
+                } else if (vh < 700 || vw < 500) {
+                    currentZoom = 0.8;
+                } else {
+                    currentZoom = 0.9;
+                }
+
+                document.body.style.transform = `scale(${currentZoom})`;
+                document.body.style.transformOrigin = 'center center';
+            } else {
+                document.body.style.transform = 'scale(1)';
+                currentZoom = 1;
+            }
+        }
+
+        // Apply mobile zoom on load and resize
+        adjustMobileZoom();
+        window.addEventListener('resize', adjustMobileZoom);
+
+        // Toggle stats display on click/touch
+        document.addEventListener('click', (e) => {
+            statsVisible = !statsVisible;
+            statsDisplay.style.display = statsVisible ? 'block' : 'none';
+        });
+
+        // Handle touch events for mobile
+        document.addEventListener('touchstart', (e) => {
+            // Prevent default to avoid zoom on double tap
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        });
+
+        // Handle orientation change on mobile
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => {
+                adjustMobileZoom();
+                // Force a resize event to recalculate dimensions
+                window.dispatchEvent(new Event('resize'));
+            }, 100);
+        });
+
+        // Initialize - hide container until we get live state
+        cbtContainer.style.visibility = 'hidden';
+        lastCornerTime = Date.now();
+
+        // Show container once we receive state
+        function showContainer() {
+            if (stateReceived && x !== null && y !== null) {
+                cbtContainer.style.visibility = 'visible';
+                console.log('👀 Container now visible with live position');
+            }
+        }
+
+        // Handle window resize - update container size and reapply position
+        window.addEventListener('resize', () => {
+            // Use actual viewport dimensions to prevent overflow
+            const viewportWidth = Math.min(window.innerWidth, document.documentElement.clientWidth);
+            const viewportHeight = Math.min(window.innerHeight, document.documentElement.clientHeight);
+
+            // Update container dimensions with new viewport size
+            let widthPercent = 0.25;
+            let heightPercent = 0.10;
+
+            // Adjust for mobile
+            if (viewportWidth <= 768) {
+                widthPercent = 0.30;
+                heightPercent = 0.12;
+            }
+            if (viewportWidth <= 480) {
+                widthPercent = 0.35;
+                heightPercent = 0.14;
+            }
+
+            const newWidth = Math.max(120, Math.min(240, viewportWidth * widthPercent));
+            const newHeight = Math.max(50, Math.min(100, viewportHeight * heightPercent));
+
+            cbtContainer.style.width = newWidth + 'px';
+            cbtContainer.style.height = newHeight + 'px';
+
+            // Ensure position stays within new bounds
+            if (x !== null && y !== null) {
+                x = Math.min(x, viewportWidth - newWidth);
+                y = Math.min(y, viewportHeight - newHeight);
+                x = Math.max(x, 0);
+                y = Math.max(y, 0);
+                updatePosition();
+            }
+        });
+
+        // Handle page visibility change with master failover
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                console.log('📱 Page hidden, notifying server of inactive master');
+                if (isMaster && ws && ws.readyState === WebSocket.OPEN) {
+                    // Notify server that this master is going inactive
+                    ws.send(JSON.stringify({
+                        type: 'masterInactive',
+                        page: 'dvd',
+                        sessionId: getSessionId()
+                    }));
+                }
+            } else {
+                console.log('👀 Page visible, requesting sync only if needed');
+                // Only request state if we don't have valid state or connection is broken
+                if ((!stateReceived || x === null || y === null) && ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ 
+                        type: 'requestState', 
+                        page: 'dvd',
+                        sessionId: getSessionId(),
+                        isReconnect: true,
+                        isVisible: true
+                    }));
+                }
+            }
+        });
+
+        // Clean up on page unload
+        window.addEventListener('beforeunload', () => {
+            if (ws) {
+                ws.close();
+            }
+        });
+
+         // Initialize with proportional positioning for any screen size
+        function getInitialState() {
+            // Use actual viewport dimensions to prevent overflow
+            const screenWidth = Math.min(window.innerWidth, document.documentElement.clientWidth);
+            const screenHeight = Math.min(window.innerHeight, document.documentElement.clientHeight);
+            return {
+                x: screenWidth * 0.1, // 10% from left
+                y: screenHeight * 0.15, // 15% from top
+                dx: Math.max(2, screenWidth * 0.003), // Typical DVD speed - faster and proportional
+                dy: Math.max(2, screenHeight * 0.003), // Typical DVD speed - faster and proportional
+                cornerHits: 0,
+                lastCornerTime: Date.now(),
+                currentColor: '#ff0000',
+                connectedViewers: 0,
+                masterClient: null
+            };
+        }
+
+
+        // Start the live DVD screensaver with optimized connection
+        console.log('🎮 CBT DVD Screensaver - connecting to live state!');
+        console.log('🌐 Current environment:', window.location.origin);
+
+        // Pre-initialize container for faster visual feedback
+        const viewportWidth = Math.min(window.innerWidth, document.documentElement.clientWidth);
+        const viewportHeight = Math.min(window.innerHeight, document.documentElement.clientHeight);
+        cbtContainer.style.width = Math.max(120, Math.min(240, viewportWidth * 0.25)) + 'px';
+        cbtContainer.style.height = Math.max(50, Math.min(100, viewportHeight * 0.10)) + 'px';
+
+        // Single fallback initialization - only if WebSocket fails completely
+        let connectionTimeout = setTimeout(() => {
+            if (!stateReceived && (!ws || ws.readyState !== WebSocket.OPEN)) {
+                console.warn('⚠️ WebSocket connection failed, starting with default state');
+                const defaultState = getInitialState();
+                x = defaultState.x;
+                y = defaultState.y;
+                dx = defaultState.dx;
+                dy = defaultState.dy;
+                cornerHits = defaultState.cornerHits;
+                lastCornerTime = defaultState.lastCornerTime;
+                currentColor = defaultState.currentColor;
+                connectedViewers = 1;
+                stateReceived = true;
+                isMaster = true;
+
+                updateDisplay();
+                updatePosition();
+                showContainer();
+                startAnimation();
+            }
+        }, 8000); // Single 8-second timeout for connection failure only
+
+
+        // Start the live DVD screensaver
+        connectWebSocket();
+    </script>
+</body>
+</html>
