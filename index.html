@@ -8,8 +8,6 @@
     <img src="/CBTdvd/assets/cbt-background.png" style="display:none;" id="preload-bg" onload="onImageLoad('cbt-background', this.src)">
     <img src="/CBTdvd/assets/cbt-text.png" style="display:none;" id="preload-text" onload="onImageLoad('cbt-text', this.src)">
 
-
-
     <!-- Open Graph Meta Tags (defer og:image) -->
     <meta property="og:title" content="CBTdvd Screensaver - CBTstreams">
     <meta property="og:description" content="Watch the CBT logo bounce around your screen like a classic DVD screensaver.">
@@ -81,7 +79,7 @@
             background-position: center;
             border-radius: 0;
             z-index: 1;
-            background-color: transparent; /* Transparent fallback */
+            background-color: transparent;
         }
 
         #cbt-overlay {
@@ -100,7 +98,7 @@
             height: 100%;
             z-index: 3;
             object-fit: contain;
-            display: none; /* Hidden until image loads */
+            display: none;
         }
 
         #corner-counter {
@@ -187,12 +185,58 @@
             const cbtWidth = Math.max(120, Math.min(240, screenWidth * 0.25));
             const cbtHeight = Math.max(50, Math.min(100, screenHeight * 0.10));
 
+            // Check localStorage for saved state
+            const saved = localStorage.getItem('cbtState');
+            if (saved) {
+                const { x: savedX, y: savedY, dx: savedDx, dy: savedDy, color: savedColor, timestamp } = JSON.parse(saved);
+                const elapsedSeconds = (Date.now() - timestamp) / 1000;
+
+                if (elapsedSeconds < 20) {
+                    // Calculate new position based on elapsed time
+                    let newX = savedX + savedDx * elapsedSeconds * 60; // Assume 60 FPS
+                    let newY = savedY + savedDy * elapsedSeconds * 60;
+                    let newDx = savedDx;
+                    let newDy = savedDy;
+
+                    // Handle bounces to keep within bounds
+                    while (newX + cbtWidth > screenWidth || newX < 0) {
+                        if (newX + cbtWidth > screenWidth) {
+                            newX = 2 * (screenWidth - cbtWidth) - newX;
+                            newDx = -Math.abs(newDx);
+                        } else if (newX < 0) {
+                            newX = -newX;
+                            newDx = Math.abs(newDx);
+                        }
+                    }
+                    while (newY + cbtHeight > screenHeight || newY < 0) {
+                        if (newY + cbtHeight > screenHeight) {
+                            newY = 2 * (screenHeight - cbtHeight) - newY;
+                            newDy = -Math.abs(newDy);
+                        } else if (newY < 0) {
+                            newY = -newY;
+                            newDy = Math.abs(newDy);
+                        }
+                    }
+
+                    return {
+                        x: newX,
+                        y: newY,
+                        dx: newDx,
+                        dy: newDy,
+                        cornerHits,
+                        lastCornerTime: Date.now(),
+                        currentColor: savedColor
+                    };
+                }
+            }
+
+            // Random state if no valid saved state or >20s elapsed
             return {
                 x: Math.random() * (screenWidth - cbtWidth),
                 y: Math.random() * (screenHeight - cbtHeight),
                 dx: (Math.random() > 0.5 ? 1 : -1) * Math.max(2, screenWidth * 0.003),
                 dy: (Math.random() > 0.5 ? 1 : -1) * Math.max(2, screenHeight * 0.003),
-                cornerHits: cornerHits,
+                cornerHits,
                 lastCornerTime: Date.now(),
                 currentColor: getRandomColor()
             };
@@ -200,6 +244,7 @@
 
         function updateDisplay() {
             cornerCountSpan.textContent = cornerHits;
+            cornerCounter.textContent = `Corner Hits: ${cornerHits}`; // Update both displays
             cbtOverlay.style.backgroundColor = currentColor;
         }
 
@@ -289,7 +334,7 @@
             localStorage.setItem('cornerHits', cornerHits);
             cornerCounter.textContent = `Corner Hits: ${cornerHits}`;
             cornerCountSpan.textContent = cornerHits;
-            console.log(`🎉 CORNER HIT #${cornerHits}! Time since last: ${(Date.now() - lastCornerTime) / 1000}s`);
+            console.log(`🎉 CORNER HIT #${cornerHits}! Time since last: ${(Date.now() - lastCornerTime) / 100rect 1000
             lastCornerTime = Date.now();
             createConfetti();
         }
@@ -365,6 +410,17 @@
 
             updatePosition();
             updateDisplay();
+
+            // Save state to localStorage
+            localStorage.setItem('cbtState', JSON.stringify({
+                x,
+                y,
+                dx,
+                dy,
+                color: currentColor,
+                timestamp: Date.now()
+            }));
+
             requestAnimationFrame(animate);
         }
 
@@ -442,7 +498,7 @@
         }
 
         function checkLoadComplete() {
-            if (imagesLoaded === 2) { // Expecting 2 images (background and text)
+            if (imagesLoaded === 2) {
                 console.log('All images loaded, showing container');
                 loading.style.display = 'none';
                 cbtContainer.style.visibility = 'visible';
@@ -460,12 +516,12 @@
                 cbtBackground.style.backgroundImage = `url(/CBTdvd/cbt-background.png)`;
                 cbtText.src = '/CBTdvd/cbt-text.png';
                 cbtText.style.display = 'block';
-                imagesLoaded = 2; // Force complete
+                imagesLoaded = 2;
                 checkLoadComplete();
             } else {
                 console.log('Images loaded within timeout, no action needed');
             }
-        }, 1000); // 1-second timeout
+        }, 1000);
 
         // Initialize and start
         const initialState = getInitialState();
