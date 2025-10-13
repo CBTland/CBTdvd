@@ -6,17 +6,25 @@
     <title>CBTdvd Screensaver</title>
     <!-- Preload with fallbacks -->
     <link rel="preload" href="/assets/cbt-background.webp" as="image" type="image/webp">
-    <link rel="preload" href="/assets/cbt-background.png" as="image" type="image/png" onerror="this.onerror=null; this.href='/assets/cbt-background.png'">
     <link rel="preload" href="/assets/cbt-text.webp" as="image" type="image/webp">
-    <link rel="preload" href="/assets/cbt-text.png" as="image" type="image/png" onerror="this.onerror=null; this.href='/assets/cbt-text.png'">
 
+    <!-- Favicon (optional, defer if slow) -->
+    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico" onerror="this.onerror=null; this.href='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg=='">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-L0T7X0BY7J"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-L0T7X0BY7J');
+    </script>
 
     <!-- Open Graph Meta Tags (defer og:image) -->
     <meta property="og:title" content="CBTdvd Screensaver - CBTstreams">
     <meta property="og:description" content="Watch the CBT logo bounce around your screen like a classic DVD screensaver.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://cbtland.github.io/CBTdvd/">
-    <!-- Defer og:image load -->
     <meta property="og:image" content="javascript:void(0)" data-og-image="/assets/ogimage.webp">
 
     <style>
@@ -71,7 +79,7 @@
             align-items: center;
             min-width: 120px;
             min-height: 50px;
-            visibility: hidden; /* Hidden until images load or fallback applied */
+            visibility: hidden;
         }
 
         #cbt-background {
@@ -83,7 +91,7 @@
             background-position: center;
             border-radius: 0;
             z-index: 1;
-            background-color: #000; /* Fallback color */
+            background-color: #333; /* Fallback color if image fails */
         }
 
         #cbt-overlay {
@@ -427,52 +435,50 @@
             }
         });
 
-        // Preload and handle image loading
+        // Preload and handle image loading with timeout
         const images = [
-            { webp: '/assets/cbt-background.webp', png: '/assets/cbt-background.png' },
-            { webp: '/assets/cbt-text.webp', png: '/assets/cbt-text.png' }
+            { id: 'cbt-background', src: '/assets/cbt-background.webp' },
+            { id: 'cbt-text', src: '/assets/cbt-text.webp' }
         ];
         let imagesLoaded = 0;
 
         function preloadImages() {
-            images.forEach(({ webp, png }) => {
+            images.forEach(({ id, src }) => {
                 const img = new Image();
-                img.src = webp;
+                img.src = src;
                 img.onload = () => {
                     imagesLoaded++;
-                    if (webp === '/assets/cbt-background.webp') cbtBackground.style.backgroundImage = `url(${webp})`;
-                    else if (webp === '/assets/cbt-text.webp') {
-                        cbtText.src = webp;
+                    if (id === 'cbt-background') cbtBackground.style.backgroundImage = `url(${src})`;
+                    else if (id === 'cbt-text') {
+                        cbtText.src = src;
                         cbtText.style.display = 'block';
                     }
                     checkLoadComplete();
                 };
                 img.onerror = () => {
-                    console.warn(`WebP failed, trying PNG: ${webp}`);
-                    const fallbackImg = new Image();
-                    fallbackImg.src = png;
-                    fallbackImg.onload = () => {
-                        imagesLoaded++;
-                        if (png === '/assets/cbt-background.png') cbtBackground.style.backgroundImage = `url(${png})`;
-                        else if (png === '/assets/cbt-text.png') {
-                            cbtText.src = png;
-                            cbtText.style.display = 'block';
-                        }
-                        checkLoadComplete();
-                    };
-                    fallbackImg.onerror = () => {
-                        console.error(`Both WebP and PNG failed for: ${webp}`);
-                        imagesLoaded++; // Increment even on error to avoid hang
-                        checkLoadComplete();
-                    };
+                    console.error(`Failed to load ${src}, using fallback`);
+                    imagesLoaded++; // Increment on error to avoid hang
+                    checkLoadComplete();
                 };
             });
+
+            // Timeout to prevent infinite loading
+            setTimeout(() => {
+                if (imagesLoaded < images.length) {
+                    console.warn('Image load timeout, proceeding with fallback');
+                    imagesLoaded = images.length; // Force completion
+                    checkLoadComplete();
+                }
+            }, 3000); // 3-second timeout
         }
 
         function checkLoadComplete() {
-            if (imagesLoaded === images.length * 2) { // Account for WebP and PNG attempts
+            if (imagesLoaded === images.length) {
                 loading.style.display = 'none';
                 cbtContainer.style.visibility = 'visible';
+                // Update OG image if needed
+                const ogImage = document.querySelector('meta[property="og:image"]');
+                if (ogImage) ogImage.content = '/assets/ogimage.webp';
             }
         }
 
@@ -494,3 +500,5 @@
         preloadImages();
         requestAnimationFrame(animate);
     </script>
+</body>
+</html>
