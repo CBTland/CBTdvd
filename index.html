@@ -162,6 +162,7 @@
         let statsVisible = false;
         let x, y, dx, dy;
         let cornerHits = parseInt(localStorage.getItem('cornerHits') || '0', 10);
+        let totalBounces = parseInt(localStorage.getItem('totalBounces') || '0', 10);
         let lastCornerTime = Date.now();
         let currentColor = '#ff0000';
         let imagesLoaded = 0;
@@ -175,47 +176,47 @@
         }
 
         function getInitialState() {
-            const screenWidth = Math.min(window.innerWidth, document.documentElement.clientWidth);
-            const screenHeight = Math.min(window.innerHeight, document.documentElement.clientHeight);
-            const cbtWidth = Math.max(120, Math.min(240, screenWidth * 0.25));
-            const cbtHeight = Math.max(50, Math.min(100, screenHeight * 0.10));
+            const screenWidth = Math.floor(Math.min(window.innerWidth, document.documentElement.clientWidth));
+            const screenHeight = Math.floor(Math.min(window.innerHeight, document.documentElement.clientHeight));
+            const cbtWidth = Math.max(120, Math.min(240, Math.floor(screenWidth * 0.25)));
+            const cbtHeight = Math.max(50, Math.min(100, Math.floor(screenHeight * 0.10)));
 
             const saved = localStorage.getItem('cbtState');
             if (saved) {
                 const { x: savedX, y: savedY, dx: savedDx, dy: savedDy, color: savedColor, timestamp } = JSON.parse(saved);
                 const elapsedSeconds = (Date.now() - timestamp) / 1000;
 
-                // Only resume if elapsed time is under 1 hour to avoid excessive calculations
                 if (elapsedSeconds < 3600) {
-                    let newX = savedX;
-                    let newY = savedY;
+                    let newX = Math.floor(savedX);
+                    let newY = Math.floor(savedY);
                     let newDx = savedDx;
                     let newDy = savedDy;
                     let remainingTime = elapsedSeconds;
 
-                    // Simulate movement frame by frame to handle multiple bounces
-                    const frameTime = 1 / 60; // 60 FPS
+                    const frameTime = 1 / 60;
                     while (remainingTime > frameTime) {
-                        newX += newDx * frameTime * 60; // Move based on velocity (pixels per second)
-                        newY += newDy * frameTime * 60;
+                        newX += newDx;
+                        newY += newDy;
 
-                        // Handle bounces
                         if (newX + cbtWidth > screenWidth) {
                             newX = 2 * (screenWidth - cbtWidth) - newX;
                             newDx = -Math.abs(newDx);
+                            totalBounces++;
                         } else if (newX < 0) {
                             newX = -newX;
                             newDx = Math.abs(newDx);
+                            totalBounces++;
                         }
                         if (newY + cbtHeight > screenHeight) {
                             newY = 2 * (screenHeight - cbtHeight) - newY;
                             newDy = -Math.abs(newDy);
+                            totalBounces++;
                         } else if (newY < 0) {
                             newY = -newY;
                             newDy = Math.abs(newDy);
+                            totalBounces++;
                         }
 
-                        // Check for corner hits
                         if (isCornerHit(newX, newY, screenWidth, screenHeight, cbtWidth, cbtHeight)) {
                             cornerHits++;
                         }
@@ -223,11 +224,6 @@
                         remainingTime -= frameTime;
                     }
 
-                    // Final adjustment for remaining time
-                    newX += newDx * remainingTime * 60;
-                    newY += newDy * remainingTime * 60;
-
-                    // Ensure final position is within bounds
                     newX = Math.max(0, Math.min(newX, screenWidth - cbtWidth));
                     newY = Math.max(0, Math.min(newY, screenHeight - cbtHeight));
 
@@ -243,12 +239,11 @@
                 }
             }
 
-            // Fallback to random initial state if no valid saved state
             return {
-                x: Math.random() * (screenWidth - cbtWidth),
-                y: Math.random() * (screenHeight - cbtHeight),
-                dx: (Math.random() > 0.5 ? 1 : -1) * Math.max(2, screenWidth * 0.003),
-                dy: (Math.random() > 0.5 ? 1 : -1) * Math.max(2, screenHeight * 0.003),
+                x: Math.floor(Math.random() * (screenWidth - cbtWidth)),
+                y: Math.floor(Math.random() * (screenHeight - cbtHeight)),
+                dx: (Math.random() > 0.5 ? 1 : -1) * 1, // Integer velocity
+                dy: (Math.random() > 0.5 ? 1 : -1) * 1, // Integer velocity
                 cornerHits,
                 lastCornerTime: Date.now(),
                 currentColor: getRandomColor()
@@ -262,8 +257,8 @@
         }
 
         function updatePosition() {
-            cbtContainer.style.left = x + 'px';
-            cbtContainer.style.top = y + 'px';
+            cbtContainer.style.left = Math.floor(x) + 'px';
+            cbtContainer.style.top = Math.floor(y) + 'px';
         }
 
         function createConfetti() {
@@ -347,13 +342,13 @@
             localStorage.setItem('cornerHits', cornerHits);
             cornerCounter.textContent = `Corner Hits: ${cornerHits}`;
             cornerCountSpan.textContent = cornerHits;
-            console.log(`🎉 CORNER HIT #${cornerHits}! Time since last: ${(Date.now() - lastCornerTime) / 1000}s`);
+            console.log(`🎉 CORNER HIT #${cornerHits}! Time since last: ${(Date.now() - lastCornerTime) / 1000}s, Total Bounces: ${totalBounces}`);
             lastCornerTime = Date.now();
             createConfetti();
         }
 
         function isCornerHit(newX, newY, screenWidth, screenHeight, cbtWidth, cbtHeight) {
-            const tolerance = 5;
+            const tolerance = 1; // Reduced to 1 pixel
             const leftEdge = newX <= tolerance;
             const rightEdge = newX >= screenWidth - cbtWidth - tolerance;
             const topEdge = newY <= tolerance;
@@ -372,34 +367,38 @@
             }
             lastFrameTime = currentTime;
 
-            const screenWidth = Math.min(window.innerWidth, document.documentElement.clientWidth);
-            const screenHeight = Math.min(window.innerHeight, document.documentElement.clientHeight);
-            const cbtWidth = Math.max(120, Math.min(240, screenWidth * 0.25));
-            const cbtHeight = Math.max(50, Math.min(100, screenHeight * 0.10));
+            const screenWidth = Math.floor(Math.min(window.innerWidth, document.documentElement.clientWidth));
+            const screenHeight = Math.floor(Math.min(window.innerHeight, document.documentElement.clientHeight));
+            const cbtWidth = Math.max(120, Math.min(240, Math.floor(screenWidth * 0.25)));
+            const cbtHeight = Math.max(50, Math.min(100, Math.floor(screenHeight * 0.10)));
 
-            let newX = x + dx;
-            let newY = y + dy;
+            let newX = Math.floor(x + dx);
+            let newY = Math.floor(y + dy);
             let hitWall = false;
             let hitCorner = false;
 
-            if (newX + cbtWidth >= screenWidth) {
+            if (newX + cbtWidth > screenWidth) {
                 newX = screenWidth - cbtWidth;
                 dx = -Math.abs(dx);
                 hitWall = true;
-            } else if (newX <= 0) {
+                totalBounces++;
+            } else if (newX < 0) {
                 newX = 0;
                 dx = Math.abs(dx);
                 hitWall = true;
+                totalBounces++;
             }
 
-            if (newY + cbtHeight >= screenHeight) {
+            if (newY + cbtHeight > screenHeight) {
                 newY = screenHeight - cbtHeight;
                 dy = -Math.abs(dy);
                 hitWall = true;
-            } else if (newY <= 0) {
+                totalBounces++;
+            } else if (newY < 0) {
                 newY = 0;
                 dy = Math.abs(dy);
                 hitWall = true;
+                totalBounces++;
             }
 
             if (hitWall && isCornerHit(newX, newY, screenWidth, screenHeight, cbtWidth, cbtHeight)) {
@@ -419,6 +418,7 @@
                         cbtOverlay.style.opacity = '0.3';
                     }, 500);
                 }
+                localStorage.setItem('totalBounces', totalBounces);
             }
 
             updatePosition();
@@ -477,7 +477,6 @@
             }
         }
 
-        // Preload images programmatically
         function preloadImages() {
             const images = [
                 { id: 'cbt-background', src: './assets/cbt-background.png' },
@@ -488,27 +487,25 @@
                 img.onload = () => onImageLoad(id, src);
                 img.onerror = () => {
                     console.warn(`Failed to load ${src}`);
-                    imagesLoaded = -1; // Force complete on error
+                    imagesLoaded = -1;
                     checkLoadComplete();
                 };
                 img.src = src;
             });
         }
 
-        // Timeout to ensure startup
         setTimeout(() => {
             if (imagesLoaded < 2 && imagesLoaded !== -1) {
                 console.warn('Image load timeout, forcing visibility');
                 loading.style.display = 'none';
                 cbtContainer.style.visibility = 'visible';
-                cbtBackground.style.backgroundColor = '#333'; // Fallback
-                cbtText.style.display = 'none'; // Hide text if failed
+                cbtBackground.style.backgroundColor = '#333';
+                cbtText.style.display = 'none';
                 imagesLoaded = -1;
                 checkLoadComplete();
             }
         }, 2000);
 
-        // Initialize
         adjustMobileZoom();
         window.addEventListener('resize', adjustMobileZoom);
 
@@ -529,28 +526,27 @@
         });
 
         window.addEventListener('resize', () => {
-            const viewportWidth = Math.min(window.innerWidth, document.documentElement.clientWidth);
-            const viewportHeight = Math.min(window.innerHeight, document.documentElement.clientHeight);
+            const viewportWidth = Math.floor(Math.min(window.innerWidth, document.documentElement.clientWidth));
+            const viewportHeight = Math.floor(Math.min(window.innerHeight, document.documentElement.clientHeight));
             let widthPercent = 0.25, heightPercent = 0.10;
             if (viewportWidth <= 768) { widthPercent = 0.30; heightPercent = 0.12; }
             if (viewportWidth <= 480) { widthPercent = 0.35; heightPercent = 0.14; }
 
-            const newWidth = Math.max(120, Math.min(240, viewportWidth * widthPercent));
-            const newHeight = Math.max(50, Math.min(100, viewportHeight * heightPercent));
+            const newWidth = Math.max(120, Math.min(240, Math.floor(viewportWidth * widthPercent)));
+            const newHeight = Math.max(50, Math.min(100, Math.floor(viewportHeight * heightPercent)));
 
             cbtContainer.style.width = newWidth + 'px';
             cbtContainer.style.height = newHeight + 'px';
 
             if (x !== null && y !== null) {
-                x = Math.min(x, viewportWidth - newWidth);
-                y = Math.min(y, viewportHeight - newHeight);
-                x = Math.max(x, 0);
-                y = Math.max(y, 0);
+                x = Math.min(Math.floor(x), viewportWidth - newWidth);
+                y = Math.min(Math.floor(y), viewportHeight - newHeight);
+                x = Math.max(Math.floor(x), 0);
+                y = Math.max(Math.floor(y), 0);
                 updatePosition();
             }
         });
 
-        // Start preloading and animation
         preloadImages();
         const initialState = getInitialState();
         x = initialState.x;
@@ -561,8 +557,8 @@
         lastCornerTime = initialState.lastCornerTime;
         currentColor = initialState.currentColor;
 
-        cbtContainer.style.width = Math.max(120, Math.min(240, Math.min(window.innerWidth, document.documentElement.clientWidth) * 0.25)) + 'px';
-        cbtContainer.style.height = Math.max(50, Math.min(100, Math.min(window.innerHeight, document.documentElement.clientHeight) * 0.10)) + 'px';
+        cbtContainer.style.width = Math.max(120, Math.min(240, Math.floor(Math.min(window.innerWidth, document.documentElement.clientWidth) * 0.25))) + 'px';
+        cbtContainer.style.height = Math.max(50, Math.min(100, Math.floor(Math.min(window.innerHeight, document.documentElement.clientHeight) * 0.10))) + 'px';
 
         updateDisplay();
         updatePosition();
