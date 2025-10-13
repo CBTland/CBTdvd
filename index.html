@@ -4,27 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=0.8, maximum-scale=1.0, user-scalable=yes">
     <title>CBTdvd Screensaver</title>
-    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
+    <!-- Preload with fallbacks -->
+    <link rel="preload" href="/assets/cbt-background.webp" as="image" type="image/webp">
+    <link rel="preload" href="/assets/cbt-background.png" as="image" type="image/png" onerror="this.onerror=null; this.href='/assets/cbt-background.png'">
+    <link rel="preload" href="/assets/cbt-text.webp" as="image" type="image/webp">
+    <link rel="preload" href="/assets/cbt-text.png" as="image" type="image/png" onerror="this.onerror=null; this.href='/assets/cbt-text.png'">
 
-    <!-- Preload critical images -->
-    <link rel="preload" href="/assets/cbt-background.webp" as="image">
-    <link rel="preload" href="/assets/cbt-text.webp" as="image">
 
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-L0T7X0BY7J"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-L0T7X0BY7J');
-    </script>
-
-    <!-- Open Graph Meta Tags (deferred og:image fetch) -->
+    <!-- Open Graph Meta Tags (defer og:image) -->
     <meta property="og:title" content="CBTdvd Screensaver - CBTstreams">
     <meta property="og:description" content="Watch the CBT logo bounce around your screen like a classic DVD screensaver.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://cbtland.github.io/CBTdvd/">
-    <meta property="og:image" content="https://cbtland.github.io/CBTdvd/assets/ogimage.webp">
+    <!-- Defer og:image load -->
+    <meta property="og:image" content="javascript:void(0)" data-og-image="/assets/ogimage.webp">
 
     <style>
         body {
@@ -46,7 +39,6 @@
             max-width: 100vw;
         }
 
-        /* Loading spinner */
         #loading {
             position: fixed;
             top: 50%;
@@ -55,45 +47,19 @@
             color: #fff;
             font-size: 18px;
             z-index: 20;
-            display: none;
+            display: block;
         }
 
-        /* Mobile-specific adjustments */
         @media (max-width: 768px) {
-            body {
-                transform: scale(0.9);
-                transform-origin: center center;
-            }
-
-            #cbt-container {
-                width: min(200px, 30vw) !important;
-                height: min(80px, 12vh) !important;
-            }
-
-            #stats-display {
-                font-size: 14px !important;
-                top: 10px !important;
-                right: 10px !important;
-                padding: 8px !important;
-                min-width: 160px !important;
-            }
+            body { transform: scale(0.9); transform-origin: center center; }
+            #cbt-container { width: min(200px, 30vw) !important; height: min(80px, 12vh) !important; }
+            #stats-display { font-size: 14px !important; top: 10px !important; right: 10px !important; padding: 8px !important; min-width: 160px !important; }
         }
 
         @media (max-width: 480px) {
-            body {
-                transform: scale(0.8);
-            }
-
-            #cbt-container {
-                width: min(160px, 35vw) !important;
-                height: min(65px, 14vh) !important;
-            }
-
-            #stats-display {
-                font-size: 12px !important;
-                padding: 6px !important;
-                min-width: 140px !important;
-            }
+            body { transform: scale(0.8); }
+            #cbt-container { width: min(160px, 35vw) !important; height: min(65px, 14vh) !important; }
+            #stats-display { font-size: 12px !important; padding: 6px !important; min-width: 140px !important; }
         }
 
         #cbt-container {
@@ -105,6 +71,7 @@
             align-items: center;
             min-width: 120px;
             min-height: 50px;
+            visibility: hidden; /* Hidden until images load or fallback applied */
         }
 
         #cbt-background {
@@ -116,6 +83,7 @@
             background-position: center;
             border-radius: 0;
             z-index: 1;
+            background-color: #000; /* Fallback color */
         }
 
         #cbt-overlay {
@@ -134,6 +102,7 @@
             height: 100%;
             z-index: 3;
             object-fit: contain;
+            display: none; /* Hidden until image loads */
         }
 
         #corner-counter {
@@ -190,6 +159,8 @@
 
     <script>
         const cbtContainer = document.getElementById('cbt-container');
+        const cbtBackground = document.getElementById('cbt-background');
+        const cbtText = document.getElementById('cbt-text');
         const cbtOverlay = document.getElementById('cbt-overlay');
         const cornerCounter = document.getElementById('corner-counter');
         const confettiContainer = document.getElementById('confetti-container');
@@ -203,7 +174,6 @@
         let lastCornerTime = Date.now();
         let currentColor = '#ff0000';
 
-        // Function to generate a random color
         function getRandomColor() {
             const colors = [
                 '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff',
@@ -212,7 +182,6 @@
             return colors[Math.floor(Math.random() * colors.length)];
         }
 
-        // Initialize with random position and velocity
         function getInitialState() {
             const screenWidth = Math.min(window.innerWidth, document.documentElement.clientWidth);
             const screenHeight = Math.min(window.innerHeight, document.documentElement.clientHeight);
@@ -230,19 +199,16 @@
             };
         }
 
-        // Update display
         function updateDisplay() {
             cornerCountSpan.textContent = cornerHits;
             cbtOverlay.style.backgroundColor = currentColor;
         }
 
-        // Update position
         function updatePosition() {
             cbtContainer.style.left = x + 'px';
             cbtContainer.style.top = y + 'px';
         }
 
-        // Create confetti
         function createConfetti() {
             const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ff8000', '#8000ff', '#ffffff', '#ffd700'];
             const shapes = ['circle', 'square', 'triangle'];
@@ -319,7 +285,6 @@
             }
         }
 
-        // Handle corner hits
         function showCornerHit() {
             cornerHits++;
             localStorage.setItem('cornerHits', cornerHits);
@@ -330,7 +295,6 @@
             createConfetti();
         }
 
-        // Check for corner hits
         function isCornerHit(newX, newY, screenWidth, screenHeight, cbtWidth, cbtHeight) {
             const tolerance = 5;
             const leftEdge = newX <= tolerance;
@@ -340,7 +304,6 @@
             return (leftEdge || rightEdge) && (topEdge || bottomEdge);
         }
 
-        // Animation loop
         let lastFrameTime = 0;
         const targetFPS = 60;
         const frameInterval = 1000 / targetFPS;
@@ -406,20 +369,15 @@
             requestAnimationFrame(animate);
         }
 
-        // Mobile zoom controls
         let currentZoom = 1;
 
         function adjustMobileZoom() {
             if (window.innerWidth <= 768) {
                 const vh = window.innerHeight;
                 const vw = window.innerWidth;
-                if (vh < 600 || vw < 400) {
-                    currentZoom = 0.7;
-                } else if (vh < 700 || vw < 500) {
-                    currentZoom = 0.8;
-                } else {
-                    currentZoom = 0.9;
-                }
+                if (vh < 600 || vw < 400) currentZoom = 0.7;
+                else if (vh < 700 || vw < 500) currentZoom = 0.8;
+                else currentZoom = 0.9;
                 document.body.style.transform = `scale(${currentZoom})`;
                 document.body.style.transformOrigin = 'center center';
             } else {
@@ -428,20 +386,16 @@
             }
         }
 
-        // Apply mobile zoom on load and resize
         adjustMobileZoom();
         window.addEventListener('resize', adjustMobileZoom);
 
-        // Toggle stats display on click/touch
         document.addEventListener('click', (e) => {
             statsVisible = !statsVisible;
             statsDisplay.style.display = statsVisible ? 'block' : 'none';
         });
 
         document.addEventListener('touchstart', (e) => {
-            if (e.touches.length > 1) {
-                e.preventDefault();
-            }
+            if (e.touches.length > 1) e.preventDefault();
         });
 
         window.addEventListener('orientationchange', () => {
@@ -451,21 +405,12 @@
             }, 100);
         });
 
-        // Handle window resize
         window.addEventListener('resize', () => {
             const viewportWidth = Math.min(window.innerWidth, document.documentElement.clientWidth);
             const viewportHeight = Math.min(window.innerHeight, document.documentElement.clientHeight);
-            let widthPercent = 0.25;
-            let heightPercent = 0.10;
-
-            if (viewportWidth <= 768) {
-                widthPercent = 0.30;
-                heightPercent = 0.12;
-            }
-            if (viewportWidth <= 480) {
-                widthPercent = 0.35;
-                heightPercent = 0.14;
-            }
+            let widthPercent = 0.25, heightPercent = 0.10;
+            if (viewportWidth <= 768) { widthPercent = 0.30; heightPercent = 0.12; }
+            if (viewportWidth <= 480) { widthPercent = 0.35; heightPercent = 0.14; }
 
             const newWidth = Math.max(120, Math.min(240, viewportWidth * widthPercent));
             const newHeight = Math.max(50, Math.min(100, viewportHeight * heightPercent));
@@ -482,33 +427,53 @@
             }
         });
 
-        // Preload images and start animation
+        // Preload and handle image loading
         const images = [
-            '/assets/cbt-background.webp',
-            '/assets/cbt-text.webp'
+            { webp: '/assets/cbt-background.webp', png: '/assets/cbt-background.png' },
+            { webp: '/assets/cbt-text.webp', png: '/assets/cbt-text.png' }
         ];
         let imagesLoaded = 0;
 
         function preloadImages() {
-            images.forEach(src => {
+            images.forEach(({ webp, png }) => {
                 const img = new Image();
-                img.src = src;
+                img.src = webp;
                 img.onload = () => {
                     imagesLoaded++;
-                    if (imagesLoaded === images.length) {
-                        loading.style.display = 'none';
-                        cbtContainer.style.visibility = 'visible';
+                    if (webp === '/assets/cbt-background.webp') cbtBackground.style.backgroundImage = `url(${webp})`;
+                    else if (webp === '/assets/cbt-text.webp') {
+                        cbtText.src = webp;
+                        cbtText.style.display = 'block';
                     }
+                    checkLoadComplete();
                 };
                 img.onerror = () => {
-                    console.error(`Failed to load image: ${src}`);
-                    imagesLoaded++;
-                    if (imagesLoaded === images.length) {
-                        loading.style.display = 'none';
-                        cbtContainer.style.visibility = 'visible';
-                    }
+                    console.warn(`WebP failed, trying PNG: ${webp}`);
+                    const fallbackImg = new Image();
+                    fallbackImg.src = png;
+                    fallbackImg.onload = () => {
+                        imagesLoaded++;
+                        if (png === '/assets/cbt-background.png') cbtBackground.style.backgroundImage = `url(${png})`;
+                        else if (png === '/assets/cbt-text.png') {
+                            cbtText.src = png;
+                            cbtText.style.display = 'block';
+                        }
+                        checkLoadComplete();
+                    };
+                    fallbackImg.onerror = () => {
+                        console.error(`Both WebP and PNG failed for: ${webp}`);
+                        imagesLoaded++; // Increment even on error to avoid hang
+                        checkLoadComplete();
+                    };
                 };
             });
+        }
+
+        function checkLoadComplete() {
+            if (imagesLoaded === images.length * 2) { // Account for WebP and PNG attempts
+                loading.style.display = 'none';
+                cbtContainer.style.visibility = 'visible';
+            }
         }
 
         // Initialize and start
@@ -526,10 +491,6 @@
 
         updateDisplay();
         updatePosition();
-        loading.style.display = 'block';
-        cbtContainer.style.visibility = 'hidden';
         preloadImages();
         requestAnimationFrame(animate);
     </script>
-</body>
-</html>
