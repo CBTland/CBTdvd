@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CBTdvd Screensaver with Chat Overlay - 1920x1080</title>
+    <meta name="viewport" content="width=device-width, initial-scale=0.8, maximum-scale=1.0, user-scalable=yes">
+    <title>CBTdvd Screensaver</title>
     <!-- Open Graph Meta Tags -->
     <meta property="og:title" content="CBTdvd Screensaver - CBTstreams">
     <meta property="og:description" content="Watch the CBT logo bounce around your screen like a classic DVD screensaver.">
@@ -12,17 +12,23 @@
     <meta property="og:image" content="./assets/ogimage.png">
 
     <style>
-        body, html {
+        body {
             margin: 0;
             padding: 0;
             overflow: hidden;
             background: #000;
-            height: 1080px;
-            width: 1920px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            height: 100dvh;
+            font-family: Arial, sans-serif;
+            width: 100vw;
             position: fixed;
             top: 0;
             left: 0;
-            font-family: Arial, sans-serif;
+            max-height: 100vh;
+            max-width: 100vw;
         }
 
         #loading {
@@ -90,8 +96,32 @@
             display: none;
         }
 
-        #corner-counter, #stats-display {
-            display: none !important;
+        #corner-counter {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            color: #fff;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 10;
+            display: none;
+        }
+
+        #stats-display {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            color: #fff;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 10;
+            display: none;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            min-width: 200px;
         }
 
         .confetti {
@@ -101,20 +131,6 @@
             z-index: 11;
             pointer-events: none;
             opacity: 1;
-        }
-
-        /* Chat overlay with 10px top/bottom crop */
-        #chat-overlay {
-            position: fixed;
-            top: 17px;
-            right: 9px;
-            width: 600px;
-            height: 1400px;
-            border: none;
-            background: transparent;
-            pointer-events: none;  /* mouse passes through; change to 'auto' for interaction */
-            z-index: 9999;
-            clip-path: inset(30px 0 40px 0);  /* crops 10px from top and bottom */
         }
     </style>
 </head>
@@ -126,16 +142,17 @@
         <img id="cbt-text" src="./assets/cbt-text.png" alt="CBT">
     </div>
 
+    <div id="corner-counter">Corner Hits: 0</div>
+    <div id="stats-display">
+        <div>Corner Hits: <span id="corner-count">0</span></div>
+    </div>
     <div id="confetti-container"></div>
 
-    <!-- Chat overlay iframe -->
-    <iframe id="chat-overlay"
-        src="https://beta.socialstream.ninja/dock.html?session=iGwCDAigWg&alignbottom&hidebots&striplinks&showviewercount&reload&loadlast&badkarma&hidenumbers&hidesource&compact&fadein&nodonohighlight&nofeaturedhightlight&unhighlight&nomemberhighlight&hideshadow&noavatar&notime&nobadges&savesingle&loadlast&reload&transparent"
-        allow="fullscreen">
-    </iframe>
-
     <script>
-        // Transparent background support via URL flag (?transparent=1 or ?bg=transparent)
+        // ────────────────────────────────────────────────
+        // Transparent background support via URL flag
+        // Use ?transparent=1  or  ?bg=transparent
+        // ────────────────────────────────────────────────
         const urlParams = new URLSearchParams(window.location.search);
         const wantTransparent = 
             urlParams.get('transparent') === '1' ||
@@ -144,22 +161,22 @@
 
         if (wantTransparent) {
             document.body.style.background = 'transparent';
-            // Optional: also make logo fallback transparent
+            // Optional: also hide fallback color behind logo if desired
             // document.getElementById('cbt-background').style.backgroundColor = 'transparent';
         }
-
-        // ────────────────────────────────────────────────
-        // Rest of your original script remains unchanged below
-        // (cbtContainer, getRandomColor, getInitialState, etc.)
         // ────────────────────────────────────────────────
 
         const cbtContainer = document.getElementById('cbt-container');
         const cbtBackground = document.getElementById('cbt-background');
         const cbtText = document.getElementById('cbt-text');
         const cbtOverlay = document.getElementById('cbt-overlay');
+        const cornerCounter = document.getElementById('corner-counter');
         const confettiContainer = document.getElementById('confetti-container');
+        const statsDisplay = document.getElementById('stats-display');
+        const cornerCountSpan = document.getElementById('corner-count');
         const loading = document.getElementById('loading');
 
+        let statsVisible = false;
         let x, y, dx, dy;
         let cornerHits = parseInt(localStorage.getItem('cornerHits') || '0', 10);
         let totalBounces = parseInt(localStorage.getItem('totalBounces') || '0', 10);
@@ -167,10 +184,376 @@
         let currentColor = '#ff0000';
         let imagesLoaded = 0;
 
-        // ... (keep all your functions: getRandomColor, getInitialState, updateDisplay, updatePosition, createConfetti, showCornerHit, isCornerHit, animate, adjustMobileZoom, onImageLoad, checkLoadComplete, preloadImages, etc.)
+        function getRandomColor() {
+            const colors = [
+                '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff',
+                '#ff8000', '#8000ff', '#0080ff', '#80ff00', '#ff0080', '#8080ff'
+            ];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
 
-        // For brevity, assuming the rest is copied from your previous version.
-        // The key parts (preloadImages, initialState, requestAnimationFrame(animate)) are unchanged.
+        function getInitialState() {
+            const screenWidth = Math.floor(Math.min(window.innerWidth, document.documentElement.clientWidth));
+            const screenHeight = Math.floor(Math.min(window.innerHeight, document.documentElement.clientHeight));
+            const cbtWidth = Math.max(120, Math.min(240, Math.floor(screenWidth * 0.25)));
+            const cbtHeight = Math.max(50, Math.min(100, Math.floor(screenHeight * 0.10)));
+
+            const saved = localStorage.getItem('cbtState');
+            if (saved) {
+                const { x: savedX, y: savedY, dx: savedDx, dy: savedDy, color: savedColor, timestamp } = JSON.parse(saved);
+                const elapsedSeconds = (Date.now() - timestamp) / 1000;
+
+                if (elapsedSeconds < 3600) {
+                    let newX = Math.floor(savedX);
+                    let newY = Math.floor(savedY);
+                    let newDx = savedDx;
+                    let newDy = savedDy;
+                    let remainingTime = elapsedSeconds;
+
+                    const frameTime = 1 / 60;
+                    while (remainingTime > frameTime) {
+                        newX += newDx;
+                        newY += newDy;
+
+                        if (newX + cbtWidth > screenWidth) {
+                            newX = 2 * (screenWidth - cbtWidth) - newX;
+                            newDx = -Math.abs(newDx);
+                            totalBounces++;
+                        } else if (newX < 0) {
+                            newX = -newX;
+                            newDx = Math.abs(newDx);
+                            totalBounces++;
+                        }
+                        if (newY + cbtHeight > screenHeight) {
+                            newY = 2 * (screenHeight - cbtHeight) - newY;
+                            newDy = -Math.abs(newDy);
+                            totalBounces++;
+                        } else if (newY < 0) {
+                            newY = -newY;
+                            newDy = Math.abs(newDy);
+                            totalBounces++;
+                        }
+
+                        if (isCornerHit(newX, newY, screenWidth, screenHeight, cbtWidth, cbtHeight)) {
+                            cornerHits++;
+                        }
+
+                        remainingTime -= frameTime;
+                    }
+
+                    newX = Math.max(0, Math.min(newX, screenWidth - cbtWidth));
+                    newY = Math.max(0, Math.min(newY, screenHeight - cbtHeight));
+
+                    return {
+                        x: newX,
+                        y: newY,
+                        dx: newDx,
+                        dy: newDy,
+                        cornerHits,
+                        lastCornerTime: Date.now(),
+                        currentColor: savedColor
+                    };
+                }
+            }
+
+            return {
+                x: Math.floor(Math.random() * (screenWidth - cbtWidth)),
+                y: Math.floor(Math.random() * (screenHeight - cbtHeight)),
+                dx: (Math.random() > 0.5 ? 1 : -1) * 1,
+                dy: (Math.random() > 0.5 ? 1 : -1) * 1,
+                cornerHits,
+                lastCornerTime: Date.now(),
+                currentColor: getRandomColor()
+            };
+        }
+
+        function updateDisplay() {
+            cornerCountSpan.textContent = cornerHits;
+            cornerCounter.textContent = `Corner Hits: ${cornerHits}`;
+            cbtOverlay.style.backgroundColor = currentColor;
+        }
+
+        function updatePosition() {
+            cbtContainer.style.left = Math.floor(x) + 'px';
+            cbtContainer.style.top = Math.floor(y) + 'px';
+        }
+
+        function createConfetti() {
+            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ff8000', '#8000ff', '#ffffff', '#ffd700'];
+            const shapes = ['circle', 'square', 'triangle'];
+
+            for (let i = 0; i < 150; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+
+                const spawnSide = Math.random();
+                let startX, startY, endX, endY;
+
+                if (spawnSide < 0.6) {
+                    startX = Math.random() * 100;
+                    startY = -10;
+                    endX = startX + (Math.random() - 0.5) * 40;
+                    endY = 110;
+                } else if (spawnSide < 0.8) {
+                    startX = -10;
+                    startY = Math.random() * 50;
+                    endX = Math.random() * 100 + 50;
+                    endY = Math.random() * 50 + 50;
+                } else {
+                    startX = 110;
+                    startY = Math.random() * 50;
+                    endX = Math.random() * 50 - 10;
+                    endY = Math.random() * 50 + 50;
+                }
+
+                confetti.style.left = startX + '%';
+                confetti.style.top = startY + '%';
+
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.backgroundColor = color;
+
+                const shape = shapes[Math.floor(Math.random() * shapes.length)];
+                if (shape === 'circle') {
+                    confetti.style.borderRadius = '50%';
+                } else if (shape === 'triangle') {
+                    confetti.style.width = '0';
+                    confetti.style.height = '0';
+                    confetti.style.backgroundColor = 'transparent';
+                    confetti.style.borderLeft = '5px solid transparent';
+                    confetti.style.borderRight = '5px solid transparent';
+                    confetti.style.borderBottom = `10px solid ${color}`;
+                }
+
+                const size = Math.random() * 10 + 3;
+                if (shape !== 'triangle') {
+                    confetti.style.width = size + 'px';
+                    confetti.style.height = size + 'px';
+                }
+
+                const duration = Math.random() * 2 + 2.5;
+                const delay = Math.random() * 0.8;
+                const rotation = Math.random() * 1440 + 360;
+
+                confetti.style.transition = `all ${duration}s cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
+                confetti.style.transitionDelay = delay + 's';
+
+                confettiContainer.appendChild(confetti);
+
+                setTimeout(() => {
+                    confetti.style.left = endX + '%';
+                    confetti.style.top = endY + '%';
+                    confetti.style.transform = `rotate(${rotation}deg) scale(0.1)`;
+                    confetti.style.opacity = '0';
+                }, 50);
+
+                setTimeout(() => {
+                    if (confetti.parentNode) confetti.parentNode.removeChild(confetti);
+                }, (duration + delay) * 1000 + 1000);
+            }
+        }
+
+        function showCornerHit() {
+            cornerHits++;
+            localStorage.setItem('cornerHits', cornerHits);
+            cornerCounter.textContent = `Corner Hits: ${cornerHits}`;
+            cornerCountSpan.textContent = cornerHits;
+            console.log(`🎉 CORNER HIT #${cornerHits}! Time since last: ${(Date.now() - lastCornerTime) / 1000}s, Total Bounces: ${totalBounces}`);
+            lastCornerTime = Date.now();
+            createConfetti();
+        }
+
+        function isCornerHit(newX, newY, screenWidth, screenHeight, cbtWidth, cbtHeight) {
+            const tolerance = 1;
+            const leftEdge   = newX <= tolerance;
+            const rightEdge  = newX >= screenWidth - cbtWidth - tolerance;
+            const topEdge    = newY <= tolerance;
+            const bottomEdge = newY >= screenHeight - cbtHeight - tolerance;
+            return (leftEdge || rightEdge) && (topEdge || bottomEdge);
+        }
+
+        let lastFrameTime = 0;
+        const targetFPS = 60;
+        const frameInterval = 1000 / targetFPS;
+
+        function animate(currentTime = 0) {
+            if (currentTime - lastFrameTime < frameInterval) {
+                requestAnimationFrame(animate);
+                return;
+            }
+            lastFrameTime = currentTime;
+
+            const screenWidth  = Math.floor(Math.min(window.innerWidth, document.documentElement.clientWidth));
+            const screenHeight = Math.floor(Math.min(window.innerHeight, document.documentElement.clientHeight));
+            const cbtWidth  = Math.max(120, Math.min(240, Math.floor(screenWidth  * 0.25)));
+            const cbtHeight = Math.max(50,  Math.min(100, Math.floor(screenHeight * 0.10)));
+
+            let newX = Math.floor(x + dx);
+            let newY = Math.floor(y + dy);
+            let hitWall = false;
+            let hitCorner = false;
+
+            if (newX + cbtWidth > screenWidth) {
+                newX = screenWidth - cbtWidth;
+                dx = -Math.abs(dx);
+                hitWall = true;
+                totalBounces++;
+            } else if (newX < 0) {
+                newX = 0;
+                dx = Math.abs(dx);
+                hitWall = true;
+                totalBounces++;
+            }
+
+            if (newY + cbtHeight > screenHeight) {
+                newY = screenHeight - cbtHeight;
+                dy = -Math.abs(dy);
+                hitWall = true;
+                totalBounces++;
+            } else if (newY < 0) {
+                newY = 0;
+                dy = Math.abs(dy);
+                hitWall = true;
+                totalBounces++;
+            }
+
+            if (hitWall && isCornerHit(newX, newY, screenWidth, screenHeight, cbtWidth, cbtHeight)) {
+                hitCorner = true;
+                showCornerHit();
+            }
+
+            x = newX;
+            y = newY;
+
+            if (hitWall) {
+                currentColor = getRandomColor();
+                cbtOverlay.style.backgroundColor = currentColor;
+                if (hitCorner) {
+                    cbtOverlay.style.opacity = '0.6';
+                    setTimeout(() => { cbtOverlay.style.opacity = '0.3'; }, 500);
+                }
+                localStorage.setItem('totalBounces', totalBounces);
+            }
+
+            updatePosition();
+            updateDisplay();
+
+            localStorage.setItem('cbtState', JSON.stringify({
+                x, y, dx, dy, color: currentColor, timestamp: Date.now()
+            }));
+
+            requestAnimationFrame(animate);
+        }
+
+        let currentZoom = 1;
+
+        function adjustMobileZoom() {
+            if (window.innerWidth <= 768) {
+                const vh = window.innerHeight;
+                const vw = window.innerWidth;
+                if      (vh < 600 || vw < 400) currentZoom = 0.7;
+                else if (vh < 700 || vw < 500) currentZoom = 0.8;
+                else                           currentZoom = 0.9;
+                document.body.style.transform = `scale(${currentZoom})`;
+                document.body.style.transformOrigin = 'center center';
+            } else {
+                document.body.style.transform = 'scale(1)';
+                currentZoom = 1;
+            }
+        }
+
+        function onImageLoad(id, src) {
+            console.log(`Image loaded: ${src}`);
+            if (id === 'cbt-background') {
+                cbtBackground.style.backgroundImage = `url(${src})`;
+                console.log(`Applied background: ${src}`);
+            } else if (id === 'cbt-text') {
+                cbtText.src = src;
+                cbtText.style.display = 'block';
+                console.log(`Applied text: ${src}`);
+            }
+            imagesLoaded++;
+            checkLoadComplete();
+        }
+
+        function checkLoadComplete() {
+            if (imagesLoaded >= 2 || imagesLoaded === -1) {
+                console.log('Showing container');
+                loading.style.display = 'none';
+                cbtContainer.style.visibility = 'visible';
+                const ogImage = document.querySelector('meta[property="og:image"]');
+                if (ogImage) ogImage.content = './assets/ogimage.png';
+            }
+        }
+
+        function preloadImages() {
+            const images = [
+                { id: 'cbt-background', src: './assets/cbt-background.png' },
+                { id: 'cbt-text',       src: './assets/cbt-text.png'       }
+            ];
+            images.forEach(({ id, src }) => {
+                const img = new Image();
+                img.onload = () => onImageLoad(id, src);
+                img.onerror = () => {
+                    console.warn(`Failed to load ${src}`);
+                    imagesLoaded = -1;
+                    checkLoadComplete();
+                };
+                img.src = src;
+            });
+        }
+
+        setTimeout(() => {
+            if (imagesLoaded < 2 && imagesLoaded !== -1) {
+                console.warn('Image load timeout, forcing visibility');
+                loading.style.display = 'none';
+                cbtContainer.style.visibility = 'visible';
+                cbtBackground.style.backgroundColor = '#333';
+                cbtText.style.display = 'none';
+                imagesLoaded = -1;
+                checkLoadComplete();
+            }
+        }, 2000);
+
+        adjustMobileZoom();
+        window.addEventListener('resize', adjustMobileZoom);
+
+        document.addEventListener('click', () => {
+            statsVisible = !statsVisible;
+            statsDisplay.style.display = statsVisible ? 'block' : 'none';
+        });
+
+        document.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 1) e.preventDefault();
+        });
+
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => {
+                adjustMobileZoom();
+                window.dispatchEvent(new Event('resize'));
+            }, 100);
+        });
+
+        window.addEventListener('resize', () => {
+            const viewportWidth  = Math.floor(Math.min(window.innerWidth, document.documentElement.clientWidth));
+            const viewportHeight = Math.floor(Math.min(window.innerHeight, document.documentElement.clientHeight));
+            let widthPercent = 0.25, heightPercent = 0.10;
+            if (viewportWidth <= 768) { widthPercent = 0.30; heightPercent = 0.12; }
+            if (viewportWidth <= 480) { widthPercent = 0.35; heightPercent = 0.14; }
+
+            const newWidth  = Math.max(120, Math.min(240, Math.floor(viewportWidth  * widthPercent)));
+            const newHeight = Math.max(50,  Math.min(100, Math.floor(viewportHeight * heightPercent)));
+
+            cbtContainer.style.width  = newWidth  + 'px';
+            cbtContainer.style.height = newHeight + 'px';
+
+            if (x != null && y != null) {
+                x = Math.min(Math.floor(x), viewportWidth - newWidth);
+                y = Math.min(Math.floor(y), viewportHeight - newHeight);
+                x = Math.max(Math.floor(x), 0);
+                y = Math.max(Math.floor(y), 0);
+                updatePosition();
+            }
+        });
 
         preloadImages();
         const initialState = getInitialState();
