@@ -64,6 +64,7 @@
             min-width: 120px;
             min-height: 50px;
             visibility: hidden;
+            opacity: 1; /* default full opacity */
         }
 
         #cbt-background {
@@ -150,9 +151,9 @@
 
     <script>
         // ────────────────────────────────────────────────
-        // Transparent background + custom overlay opacity flag
-        // Use ?transparent=1&opacity=0.5   (value 0.0 to 1.0)
-        // Only applies when transparent mode is active
+        // Transparent background + whole-page opacity control
+        // Use ?transparent=1&opacity=0.5   (0.0 = invisible → 1.0 = full)
+        // Makes entire bouncing logo more see-through over video
         // ────────────────────────────────────────────────
         const urlParams = new URLSearchParams(window.location.search);
         const wantTransparent = 
@@ -160,19 +161,17 @@
             urlParams.get('bg') === 'transparent' ||
             urlParams.get('transparent') === 'true';
 
-        let overlayOpacity = 0.3; // default
+        let pageOpacity = 1.0; // default: fully visible
 
         if (wantTransparent) {
             document.body.style.background = 'transparent';
-            // Optional: make fallback behind logo transparent too
-            // document.getElementById('cbt-background').style.backgroundColor = 'transparent';
 
-            // Read custom opacity from URL (clamp to 0–1)
+            // Read custom page opacity from URL (clamp 0–1)
             const requestedOpacity = parseFloat(urlParams.get('opacity'));
             if (!isNaN(requestedOpacity) && requestedOpacity >= 0 && requestedOpacity <= 1) {
-                overlayOpacity = requestedOpacity;
+                pageOpacity = requestedOpacity;
             } else if (urlParams.get('opacity')) {
-                console.warn(`Invalid opacity value "${urlParams.get('opacity')}". Using default 0.3. Range: 0.0–1.0`);
+                console.warn(`Invalid opacity "${urlParams.get('opacity')}". Using 1.0. Range: 0.0–1.0`);
             }
         }
 
@@ -186,10 +185,10 @@
         const cornerCountSpan = document.getElementById('corner-count');
         const loading = document.getElementById('loading');
 
-        // Apply the custom opacity to the colored overlay layer
+        // Apply page-level opacity if transparent mode is on
         if (wantTransparent) {
-            cbtOverlay.style.opacity = overlayOpacity;
-            console.log(`Custom overlay opacity set to ${overlayOpacity} (via URL param)`);
+            cbtContainer.style.opacity = pageOpacity;
+            console.log(`Page overlay opacity set to ${pageOpacity} (via ?opacity=)`);
         }
 
         let statsVisible = false;
@@ -444,8 +443,12 @@
                 currentColor = getRandomColor();
                 cbtOverlay.style.backgroundColor = currentColor;
                 if (hitCorner) {
-                    cbtOverlay.style.opacity = Math.max(0.3, overlayOpacity * 2); // temporary flash brighter
-                    setTimeout(() => { cbtOverlay.style.opacity = overlayOpacity; }, 500);
+                    // Temporary flash: boost opacity briefly even if page is faded
+                    const flashOpacity = Math.min(1.0, pageOpacity * 1.5 + 0.2);
+                    cbtContainer.style.opacity = flashOpacity;
+                    setTimeout(() => {
+                        cbtContainer.style.opacity = pageOpacity;
+                    }, 500);
                 }
                 localStorage.setItem('totalBounces', totalBounces);
             }
