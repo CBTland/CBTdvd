@@ -150,8 +150,9 @@
 
     <script>
         // ────────────────────────────────────────────────
-        // Transparent background + blend mode support
-        // Use ?transparent=1&blend=screen   or   ?blend=add   or   ?blend=lighten
+        // Transparent background + custom overlay opacity flag
+        // Use ?transparent=1&opacity=0.5   (value 0.0 to 1.0)
+        // Only applies when transparent mode is active
         // ────────────────────────────────────────────────
         const urlParams = new URLSearchParams(window.location.search);
         const wantTransparent = 
@@ -159,20 +160,19 @@
             urlParams.get('bg') === 'transparent' ||
             urlParams.get('transparent') === 'true';
 
-        let blendMode = 'normal';
+        let overlayOpacity = 0.3; // default
 
         if (wantTransparent) {
             document.body.style.background = 'transparent';
-            // Optional: also make fallback color transparent
+            // Optional: make fallback behind logo transparent too
             // document.getElementById('cbt-background').style.backgroundColor = 'transparent';
 
-            const requestedBlend = urlParams.get('blend')?.toLowerCase();
-            const validBlends = ['add', 'screen', 'lighten', 'overlay', 'normal'];
-
-            if (requestedBlend && validBlends.includes(requestedBlend)) {
-                blendMode = requestedBlend;
-            } else if (requestedBlend) {
-                console.warn(`Invalid blend mode "${requestedBlend}". Using "normal". Valid options: add, screen, lighten, overlay, normal`);
+            // Read custom opacity from URL (clamp to 0–1)
+            const requestedOpacity = parseFloat(urlParams.get('opacity'));
+            if (!isNaN(requestedOpacity) && requestedOpacity >= 0 && requestedOpacity <= 1) {
+                overlayOpacity = requestedOpacity;
+            } else if (urlParams.get('opacity')) {
+                console.warn(`Invalid opacity value "${urlParams.get('opacity')}". Using default 0.3. Range: 0.0–1.0`);
             }
         }
 
@@ -186,6 +186,12 @@
         const cornerCountSpan = document.getElementById('corner-count');
         const loading = document.getElementById('loading');
 
+        // Apply the custom opacity to the colored overlay layer
+        if (wantTransparent) {
+            cbtOverlay.style.opacity = overlayOpacity;
+            console.log(`Custom overlay opacity set to ${overlayOpacity} (via URL param)`);
+        }
+
         let statsVisible = false;
         let x, y, dx, dy;
         let cornerHits = parseInt(localStorage.getItem('cornerHits') || '0', 10);
@@ -193,18 +199,6 @@
         let lastCornerTime = Date.now();
         let currentColor = '#ff0000';
         let imagesLoaded = 0;
-
-        // Apply blend mode if transparency is active and blend ≠ normal
-        if (wantTransparent && blendMode !== 'normal') {
-            cbtOverlay.style.mixBlendMode = blendMode;
-            // Optional: also apply to text if desired
-            // cbtText.style.mixBlendMode = blendMode;
-
-            // Create stacking context so mix-blend-mode works relative to the page root
-            document.body.style.isolation = 'isolate';
-
-            console.log(`Blend mode activated: ${blendMode} (with transparent background)`);
-        }
 
         function getRandomColor() {
             const colors = [
@@ -450,8 +444,8 @@
                 currentColor = getRandomColor();
                 cbtOverlay.style.backgroundColor = currentColor;
                 if (hitCorner) {
-                    cbtOverlay.style.opacity = '0.6';
-                    setTimeout(() => { cbtOverlay.style.opacity = '0.3'; }, 500);
+                    cbtOverlay.style.opacity = Math.max(0.3, overlayOpacity * 2); // temporary flash brighter
+                    setTimeout(() => { cbtOverlay.style.opacity = overlayOpacity; }, 500);
                 }
                 localStorage.setItem('totalBounces', totalBounces);
             }
