@@ -150,8 +150,8 @@
 
     <script>
         // ────────────────────────────────────────────────
-        // Transparent background support via URL flag
-        // Use ?transparent=1  or  ?bg=transparent
+        // Transparent background + blend mode support
+        // Use ?transparent=1&blend=screen   or   ?blend=add   or   ?blend=lighten
         // ────────────────────────────────────────────────
         const urlParams = new URLSearchParams(window.location.search);
         const wantTransparent = 
@@ -159,12 +159,22 @@
             urlParams.get('bg') === 'transparent' ||
             urlParams.get('transparent') === 'true';
 
+        let blendMode = 'normal';
+
         if (wantTransparent) {
             document.body.style.background = 'transparent';
-            // Optional: also hide fallback color behind logo if desired
+            // Optional: also make fallback color transparent
             // document.getElementById('cbt-background').style.backgroundColor = 'transparent';
+
+            const requestedBlend = urlParams.get('blend')?.toLowerCase();
+            const validBlends = ['add', 'screen', 'lighten', 'overlay', 'normal'];
+
+            if (requestedBlend && validBlends.includes(requestedBlend)) {
+                blendMode = requestedBlend;
+            } else if (requestedBlend) {
+                console.warn(`Invalid blend mode "${requestedBlend}". Using "normal". Valid options: add, screen, lighten, overlay, normal`);
+            }
         }
-        // ────────────────────────────────────────────────
 
         const cbtContainer = document.getElementById('cbt-container');
         const cbtBackground = document.getElementById('cbt-background');
@@ -183,6 +193,18 @@
         let lastCornerTime = Date.now();
         let currentColor = '#ff0000';
         let imagesLoaded = 0;
+
+        // Apply blend mode if transparency is active and blend ≠ normal
+        if (wantTransparent && blendMode !== 'normal') {
+            cbtOverlay.style.mixBlendMode = blendMode;
+            // Optional: also apply to text if desired
+            // cbtText.style.mixBlendMode = blendMode;
+
+            // Create stacking context so mix-blend-mode works relative to the page root
+            document.body.style.isolation = 'isolate';
+
+            console.log(`Blend mode activated: ${blendMode} (with transparent background)`);
+        }
 
         function getRandomColor() {
             const colors = [
